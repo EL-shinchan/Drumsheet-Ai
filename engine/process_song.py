@@ -9,16 +9,11 @@ VALID_DIFFICULTIES = {"beginner", "intermediate", "pro"}
 DIVISIONS = 8
 DURATION_MAP = {"32nd": 1, "16th": 2, "eighth": 4, "quarter": 8}
 
-# Reset to a stricter reference-driven drum map.
-# Cymbals stay above the staff with x noteheads.
-# Snare returns to the middle staff area.
-# Kick stays low.
-# Toms descend from high to floor.
 DRUM_MAP = {
     "kick": {"instrument": "P1-I36", "name": "Bass Drum", "step": "F", "octave": 4, "stem": "down", "voice": 2},
     "snare": {"instrument": "P1-I39", "name": "Snare Drum", "step": "C", "octave": 5, "stem": "up", "voice": 1},
-    "ghost-snare": {"instrument": "P1-I39", "name": "Snare Drum", "step": "C", "octave": 5, "stem": "up", "voice": 1, "parentheses": True},
-    "closed-hihat": {"instrument": "P1-I43", "name": "Closed Hi-Hat", "step": "G", "octave": 5, "stem": "up", "voice": 1, "notehead": "x"},
+    "ghost-snare": {"instrument": "P1-I39", "name": "Snare Drum", "step": "C", "octave": 5, "stem": "up", "voice": 1, "ghost": True, "parentheses": True},
+    "closed-hihat": {"instrument": "P1-I43", "name": "Closed Hi-Hat", "step": "G", "octave": 5, "stem": "up", "voice": 1, "notehead": "x", "closed": True},
     "open-hihat": {"instrument": "P1-I43", "name": "Open Hi-Hat", "step": "G", "octave": 5, "stem": "up", "voice": 1, "notehead": "x", "open": True},
     "ride": {"instrument": "P1-I51", "name": "Ride Cymbal", "step": "A", "octave": 5, "stem": "up", "voice": 1, "notehead": "x"},
     "crash": {"instrument": "P1-I49", "name": "Crash Cymbal", "step": "A", "octave": 5, "stem": "up", "voice": 1, "notehead": "x"},
@@ -73,7 +68,7 @@ def beginner_measure_two():
             event(12, "closed-hihat"),
             event(16, "closed-hihat"), event(16, "kick", "quarter"),
             event(20, "closed-hihat"),
-            event(24, "closed-hihat"), event(24, "snare", "quarter"),
+            event(24, "closed-hihat"), event(24, "snare", "quarter", accent=True),
             event(28, "open-hihat"),
         ],
     }
@@ -171,17 +166,21 @@ def note_xml(event_data, chord=False):
     xml.append(f"      <type>{event_data['duration']}</type>")
     if drum.get("notehead"):
         xml.append(f"      <notehead>{drum['notehead']}</notehead>")
+    if drum.get("parentheses"):
+        xml.append("      <notehead parentheses=\"yes\">normal</notehead>")
     xml.append(f"      <stem>{drum['stem']}</stem>")
     xml.append("      <staff>1</staff>")
-    if event_data.get("accent") or drum.get("parentheses") or drum.get("open"):
+    if event_data.get("accent") or drum.get("ghost") or drum.get("open") or drum.get("closed"):
         xml.append("      <notations>")
         if event_data.get("accent"):
             xml.append("        <articulations><accent/></articulations>")
+        if drum.get("ghost"):
+            xml.append("        <technical><other-technical>ghost</other-technical></technical>")
         if drum.get("open"):
             xml.append("        <technical><open-string/></technical>")
+        if drum.get("closed"):
+            xml.append("        <technical><stopped/></technical>")
         xml.append("      </notations>")
-    if drum.get("parentheses"):
-        xml.append("      <play><mute>straight</mute></play>")
     xml.append("    </note>")
     return "\n".join(xml)
 
@@ -290,9 +289,9 @@ def main():
             {
                 "title": f"Experimental notation for {clean_score_title}",
                 "difficulty": difficulty,
-                "confidence": 0.71 if difficulty == "beginner" else 0.77 if difficulty == "intermediate" else 0.82,
+                "confidence": 0.73 if difficulty == "beginner" else 0.79 if difficulty == "intermediate" else 0.84,
                 "previewMode": "musicxml",
-                "summary": "This correction pass restores a stricter reference-driven drum map before any more layout tweaking: snare back to the middle area, kick low, cymbals above, toms descending naturally.",
+                "summary": "This pass improves articulation clarity: ghost snare notes are marked more explicitly, accents are cleaner, and hi-hat states are more clearly differentiated.",
                 "musicXml": music_xml,
             }
         )
