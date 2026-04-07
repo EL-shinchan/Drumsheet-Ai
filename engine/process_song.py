@@ -9,16 +9,21 @@ VALID_DIFFICULTIES = {"beginner", "intermediate", "pro"}
 DIVISIONS = 8
 DURATION_MAP = {"32nd": 1, "16th": 2, "eighth": 4, "quarter": 8}
 
+# Reset to a stricter reference-driven drum map.
+# Cymbals stay above the staff with x noteheads.
+# Snare returns to the middle staff area.
+# Kick stays low.
+# Toms descend from high to floor.
 DRUM_MAP = {
     "kick": {"instrument": "P1-I36", "name": "Bass Drum", "step": "F", "octave": 4, "stem": "down", "voice": 2},
-    "snare": {"instrument": "P1-I39", "name": "Snare Drum", "step": "D", "octave": 5, "stem": "up", "voice": 1},
-    "ghost-snare": {"instrument": "P1-I39", "name": "Snare Drum", "step": "D", "octave": 5, "stem": "up", "voice": 1, "parentheses": True},
+    "snare": {"instrument": "P1-I39", "name": "Snare Drum", "step": "C", "octave": 5, "stem": "up", "voice": 1},
+    "ghost-snare": {"instrument": "P1-I39", "name": "Snare Drum", "step": "C", "octave": 5, "stem": "up", "voice": 1, "parentheses": True},
     "closed-hihat": {"instrument": "P1-I43", "name": "Closed Hi-Hat", "step": "G", "octave": 5, "stem": "up", "voice": 1, "notehead": "x"},
     "open-hihat": {"instrument": "P1-I43", "name": "Open Hi-Hat", "step": "G", "octave": 5, "stem": "up", "voice": 1, "notehead": "x", "open": True},
     "ride": {"instrument": "P1-I51", "name": "Ride Cymbal", "step": "A", "octave": 5, "stem": "up", "voice": 1, "notehead": "x"},
     "crash": {"instrument": "P1-I49", "name": "Crash Cymbal", "step": "A", "octave": 5, "stem": "up", "voice": 1, "notehead": "x"},
-    "high-tom": {"instrument": "P1-I48", "name": "High Tom", "step": "F", "octave": 5, "stem": "up", "voice": 1},
-    "mid-tom": {"instrument": "P1-I47", "name": "Mid Tom", "step": "E", "octave": 5, "stem": "up", "voice": 1},
+    "high-tom": {"instrument": "P1-I48", "name": "High Tom", "step": "E", "octave": 5, "stem": "up", "voice": 1},
+    "mid-tom": {"instrument": "P1-I47", "name": "Mid Tom", "step": "D", "octave": 5, "stem": "up", "voice": 1},
     "floor-tom": {"instrument": "P1-I41", "name": "Floor Tom", "step": "A", "octave": 4, "stem": "up", "voice": 1},
 }
 
@@ -182,23 +187,10 @@ def note_xml(event_data, chord=False):
 
 
 def grouped_note_xml(events_group):
-    upper = [e for e in events_group if DRUM_MAP[e["drum"]]["voice"] == 1]
-    lower = [e for e in events_group if DRUM_MAP[e["drum"]]["voice"] == 2]
-
+    ordered = sorted(events_group, key=lambda item: (DRUM_MAP[item["drum"]]["voice"], -DRUM_MAP[item["drum"]]["octave"]))
     xml_parts = []
-
-    if upper:
-        ordered_upper = sorted(upper, key=lambda item: -DRUM_MAP[item["drum"]]["octave"])
-        xml_parts.append(note_xml(ordered_upper[0], chord=False))
-        for extra in ordered_upper[1:]:
-            xml_parts.append(note_xml(extra, chord=True))
-
-    if lower:
-        ordered_lower = sorted(lower, key=lambda item: DRUM_MAP[item["drum"]]["octave"])
-        xml_parts.append(note_xml(ordered_lower[0], chord=False if not upper else True))
-        for extra in ordered_lower[1:]:
-            xml_parts.append(note_xml(extra, chord=True))
-
+    for index, event_data in enumerate(ordered):
+        xml_parts.append(note_xml(event_data, chord=index > 0))
     return xml_parts
 
 
@@ -298,9 +290,9 @@ def main():
             {
                 "title": f"Experimental notation for {clean_score_title}",
                 "difficulty": difficulty,
-                "confidence": 0.7 if difficulty == "beginner" else 0.76 if difficulty == "intermediate" else 0.81,
+                "confidence": 0.71 if difficulty == "beginner" else 0.77 if difficulty == "intermediate" else 0.82,
                 "previewMode": "musicxml",
-                "summary": "This pass cleans the engraved score metadata: no raw timestamp filename in the title, and section labels are moved higher so they stop colliding with the cymbal line.",
+                "summary": "This correction pass restores a stricter reference-driven drum map before any more layout tweaking: snare back to the middle area, kick low, cymbals above, toms descending naturally.",
                 "musicXml": music_xml,
             }
         )
