@@ -2,29 +2,10 @@ import json
 import os
 import re
 import sys
-from collections import defaultdict
 from xml.sax.saxutils import escape
 
 VALID_DIFFICULTIES = {"beginner", "intermediate", "pro"}
 DIVISIONS = 8
-DURATION_MAP = {"32nd": 1, "16th": 2, "eighth": 4, "quarter": 8}
-
-DRUM_MAP = {
-    "kick": {"instrument": "P1-I36", "name": "Bass Drum", "step": "F", "octave": 4, "stem": "down", "voice": 2},
-    "snare": {"instrument": "P1-I39", "name": "Snare Drum", "step": "C", "octave": 5, "stem": "up", "voice": 1},
-    "ghost-snare": {"instrument": "P1-I39", "name": "Snare Drum", "step": "C", "octave": 5, "stem": "up", "voice": 1, "ghost": True, "parentheses": True},
-    "closed-hihat": {"instrument": "P1-I43", "name": "Closed Hi-Hat", "step": "G", "octave": 5, "stem": "up", "voice": 1, "notehead": "x", "closed": True},
-    "open-hihat": {"instrument": "P1-I43", "name": "Open Hi-Hat", "step": "G", "octave": 5, "stem": "up", "voice": 1, "notehead": "x", "open": True},
-    "ride": {"instrument": "P1-I51", "name": "Ride Cymbal", "step": "A", "octave": 5, "stem": "up", "voice": 1, "notehead": "x"},
-    "crash": {"instrument": "P1-I49", "name": "Crash Cymbal", "step": "A", "octave": 5, "stem": "up", "voice": 1, "notehead": "x"},
-    "high-tom": {"instrument": "P1-I48", "name": "High Tom", "step": "E", "octave": 5, "stem": "up", "voice": 1},
-    "mid-tom": {"instrument": "P1-I47", "name": "Mid Tom", "step": "D", "octave": 5, "stem": "up", "voice": 1},
-    "floor-tom": {"instrument": "P1-I41", "name": "Floor Tom", "step": "A", "octave": 4, "stem": "up", "voice": 1},
-}
-
-INSTRUMENT_ORDER = [
-    "kick", "snare", "closed-hihat", "open-hihat", "ride", "crash", "high-tom", "mid-tom", "floor-tom"
-]
 
 
 def clean_title(file_path: str) -> str:
@@ -38,213 +19,10 @@ def clean_title(file_path: str) -> str:
     return name or "Experimental Drum Preview"
 
 
-def event(at, drum, duration="eighth", accent=False):
-    return {"at": at, "drum": drum, "duration": duration, "accent": accent}
-
-
-def beginner_measure_one():
-    return {
-        "label": "Intro",
-        "events": [
-            event(0, "closed-hihat"), event(0, "kick", "quarter"),
-            event(4, "closed-hihat"),
-            event(8, "closed-hihat"), event(8, "snare", "quarter"),
-            event(12, "closed-hihat"),
-            event(16, "closed-hihat"), event(16, "kick", "quarter"),
-            event(20, "closed-hihat"),
-            event(24, "closed-hihat"), event(24, "snare", "quarter"),
-            event(28, "closed-hihat"),
-        ],
-    }
-
-
-def beginner_measure_two():
-    return {
-        "label": "Verse",
-        "events": [
-            event(0, "crash", accent=True), event(0, "kick", "quarter"),
-            event(4, "closed-hihat"),
-            event(8, "closed-hihat"), event(8, "snare", "quarter"),
-            event(12, "closed-hihat"),
-            event(16, "closed-hihat"), event(16, "kick", "quarter"),
-            event(20, "closed-hihat"),
-            event(24, "closed-hihat"), event(24, "snare", "quarter", accent=True),
-            event(28, "open-hihat"),
-        ],
-    }
-
-
-def intermediate_measure_one():
-    return {
-        "label": "Verse",
-        "events": [
-            event(0, "crash", accent=True), event(0, "kick", "quarter"),
-            event(4, "closed-hihat"),
-            event(8, "closed-hihat"), event(8, "snare", "quarter", accent=True),
-            event(12, "closed-hihat"), event(14, "ghost-snare", "16th"),
-            event(16, "closed-hihat"), event(16, "kick", "quarter"),
-            event(20, "closed-hihat"), event(20, "kick", "eighth"),
-            event(24, "closed-hihat"), event(24, "snare", "quarter", accent=True),
-            event(28, "open-hihat"),
-        ],
-    }
-
-
-def intermediate_measure_two():
-    return {
-        "label": "Fill / transition",
-        "events": [
-            event(0, "ride"), event(0, "kick", "quarter"),
-            event(4, "ride"),
-            event(8, "ride"), event(8, "snare", "quarter", accent=True),
-            event(12, "ride"),
-            event(16, "ride"), event(16, "kick", "quarter"),
-            event(20, "high-tom", "16th"),
-            event(22, "mid-tom", "16th"),
-            event(24, "floor-tom", "16th"),
-            event(26, "snare", "16th", accent=True),
-            event(28, "crash", accent=True), event(28, "kick", "quarter"),
-        ],
-    }
-
-
-def pro_measure_one():
-    return {
-        "label": "Verse",
-        "events": [
-            event(0, "crash", accent=True), event(0, "kick", "quarter"),
-            event(4, "closed-hihat"),
-            event(8, "closed-hihat"), event(8, "snare", "quarter", accent=True),
-            event(10, "ghost-snare", "16th"),
-            event(12, "closed-hihat"), event(12, "kick", "eighth"),
-            event(16, "closed-hihat"), event(16, "kick", "quarter"),
-            event(20, "closed-hihat"), event(22, "ghost-snare", "16th"),
-            event(24, "closed-hihat"), event(24, "snare", "quarter", accent=True),
-            event(28, "open-hihat"), event(28, "kick", "quarter"),
-        ],
-    }
-
-
-def pro_measure_two():
-    return {
-        "label": "Verse variation",
-        "events": [
-            event(0, "ride"), event(0, "kick", "quarter"),
-            event(4, "ride"), event(4, "kick", "eighth"),
-            event(8, "ride"), event(8, "snare", "quarter", accent=True),
-            event(10, "ghost-snare", "16th"),
-            event(12, "ride"),
-            event(16, "ride"), event(16, "kick", "quarter"),
-            event(20, "ride"), event(20, "kick", "eighth"),
-            event(24, "ride"), event(24, "snare", "quarter", accent=True),
-            event(28, "ride"), event(28, "kick", "quarter"),
-        ],
-    }
-
-
-def build_measures(difficulty: str):
-    if difficulty == "beginner":
-        return [beginner_measure_one(), beginner_measure_two()]
-    if difficulty == "intermediate":
-        return [intermediate_measure_one(), intermediate_measure_two()]
-    return [pro_measure_one(), pro_measure_two()]
-
-
-def note_xml(event_data, chord=False):
-    drum = DRUM_MAP[event_data["drum"]]
-    duration_value = DURATION_MAP[event_data["duration"]]
-    xml = ["    <note>"]
-    if chord:
-        xml.append("      <chord/>")
-    xml.append("      <unpitched>")
-    xml.append(f"        <display-step>{drum['step']}</display-step>")
-    xml.append(f"        <display-octave>{drum['octave']}</display-octave>")
-    xml.append("      </unpitched>")
-    xml.append(f"      <duration>{duration_value}</duration>")
-    xml.append(f"      <instrument id=\"{drum['instrument']}\"/>")
-    xml.append(f"      <voice>{drum['voice']}</voice>")
-    xml.append(f"      <type>{event_data['duration']}</type>")
-    if drum.get("notehead"):
-        xml.append(f"      <notehead>{drum['notehead']}</notehead>")
-    if drum.get("parentheses"):
-        xml.append("      <notehead parentheses=\"yes\">normal</notehead>")
-    xml.append(f"      <stem>{drum['stem']}</stem>")
-    xml.append("      <staff>1</staff>")
-    if event_data.get("accent") or drum.get("ghost") or drum.get("open") or drum.get("closed"):
-        xml.append("      <notations>")
-        if event_data.get("accent"):
-            xml.append("        <articulations><accent/></articulations>")
-        if drum.get("ghost"):
-            xml.append("        <technical><other-technical>ghost</other-technical></technical>")
-        if drum.get("open"):
-            xml.append("        <technical><open-string/></technical>")
-        if drum.get("closed"):
-            xml.append("        <technical><stopped/></technical>")
-        xml.append("      </notations>")
-    xml.append("    </note>")
-    return "\n".join(xml)
-
-
-def grouped_note_xml(events_group):
-    ordered = sorted(events_group, key=lambda item: (DRUM_MAP[item["drum"]]["voice"], -DRUM_MAP[item["drum"]]["octave"]))
-    xml_parts = []
-    for index, event_data in enumerate(ordered):
-        xml_parts.append(note_xml(event_data, chord=index > 0))
-    return xml_parts
-
-
-def build_musicxml(score_title: str, difficulty: str):
-    measures = build_measures(difficulty)
-    measure_xml = []
-
-    for index, measure in enumerate(measures, start=1):
-        grouped = defaultdict(list)
-        for event_data in measure["events"]:
-            grouped[event_data["at"]].append(event_data)
-
-        measure_xml.append(f'  <measure number="{index}">')
-        if index == 1:
-            measure_xml.append("    <print new-system=\"yes\">")
-            measure_xml.append("      <system-layout><system-distance>95</system-distance><top-system-distance>120</top-system-distance></system-layout>")
-            measure_xml.append("    </print>")
-            measure_xml.append("    <attributes>")
-            measure_xml.append(f"      <divisions>{DIVISIONS}</divisions>")
-            measure_xml.append("      <key><fifths>0</fifths></key>")
-            measure_xml.append("      <time><beats>4</beats><beat-type>4</beat-type></time>")
-            measure_xml.append("      <staves>1</staves>")
-            measure_xml.append("      <clef number=\"1\"><sign>percussion</sign><line>2</line></clef>")
-            measure_xml.append("    </attributes>")
-        else:
-            measure_xml.append("    <print new-system=\"yes\">")
-            measure_xml.append("      <system-layout><system-distance>95</system-distance></system-layout>")
-            measure_xml.append("    </print>")
-            measure_xml.append("    <attributes>")
-            measure_xml.append("      <time><beats>4</beats><beat-type>4</beat-type></time>")
-            measure_xml.append("    </attributes>")
-
-        measure_xml.append("    <direction placement=\"above\">")
-        measure_xml.append("      <direction-type>")
-        measure_xml.append(f"        <words default-y=\"55\" font-weight=\"bold\">{escape(measure['label'])}</words>")
-        measure_xml.append("      </direction-type>")
-        measure_xml.append("    </direction>")
-
-        for beat in sorted(grouped.keys()):
-            measure_xml.extend(grouped_note_xml(grouped[beat]))
-
-        measure_xml.append("  </measure>")
-
-    score_instruments = []
-    seen = set()
-    for key in INSTRUMENT_ORDER:
-        drum = DRUM_MAP[key]
-        if drum["instrument"] in seen:
-            continue
-        seen.add(drum["instrument"])
-        score_instruments.append(
-            f'      <score-instrument id="{drum["instrument"]}"><instrument-name>{escape(drum["name"])}</instrument-name></score-instrument>'
-        )
-
-    score = f'''<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+def build_musicxml(score_title: str) -> str:
+    # Reset pass: one single reference-style rock groove bar.
+    # Goal: lock placement before adding complexity again.
+    return f'''<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE score-partwise PUBLIC
   "-//Recordare//DTD MusicXML 3.1 Partwise//EN"
   "http://www.musicxml.org/dtds/partwise.dtd">
@@ -253,20 +31,195 @@ def build_musicxml(score_title: str, difficulty: str):
     <work-title>{escape(score_title)}</work-title>
   </work>
   <identification>
-    <creator type="arranger">Drumsheet AI experimental engraving</creator>
+    <creator type="arranger">Drumsheet AI notation reset baseline</creator>
   </identification>
   <part-list>
     <score-part id="P1">
       <part-name>Drumset</part-name>
-{chr(10).join(score_instruments)}
+      <score-instrument id="P1-I36"><instrument-name>Bass Drum</instrument-name></score-instrument>
+      <score-instrument id="P1-I39"><instrument-name>Snare Drum</instrument-name></score-instrument>
+      <score-instrument id="P1-I43"><instrument-name>Closed Hi-Hat</instrument-name></score-instrument>
     </score-part>
   </part-list>
   <part id="P1">
-{chr(10).join(measure_xml)}
+    <measure number="1">
+      <attributes>
+        <divisions>{DIVISIONS}</divisions>
+        <key><fifths>0</fifths></key>
+        <time><beats>4</beats><beat-type>4</beat-type></time>
+        <staves>1</staves>
+        <clef number="1"><sign>percussion</sign><line>2</line></clef>
+      </attributes>
+
+      <note>
+        <unpitched>
+          <display-step>G</display-step>
+          <display-octave>5</display-octave>
+        </unpitched>
+        <duration>4</duration>
+        <instrument id="P1-I43"/>
+        <voice>1</voice>
+        <type>eighth</type>
+        <notehead>x</notehead>
+        <stem>up</stem>
+        <staff>1</staff>
+      </note>
+      <note>
+        <chord/>
+        <unpitched>
+          <display-step>F</display-step>
+          <display-octave>4</display-octave>
+        </unpitched>
+        <duration>8</duration>
+        <instrument id="P1-I36"/>
+        <voice>2</voice>
+        <type>quarter</type>
+        <stem>down</stem>
+        <staff>1</staff>
+      </note>
+
+      <note>
+        <unpitched>
+          <display-step>G</display-step>
+          <display-octave>5</display-octave>
+        </unpitched>
+        <duration>4</duration>
+        <instrument id="P1-I43"/>
+        <voice>1</voice>
+        <type>eighth</type>
+        <notehead>x</notehead>
+        <stem>up</stem>
+        <staff>1</staff>
+      </note>
+
+      <note>
+        <unpitched>
+          <display-step>G</display-step>
+          <display-octave>5</display-octave>
+        </unpitched>
+        <duration>4</duration>
+        <instrument id="P1-I43"/>
+        <voice>1</voice>
+        <type>eighth</type>
+        <notehead>x</notehead>
+        <stem>up</stem>
+        <staff>1</staff>
+      </note>
+      <note>
+        <chord/>
+        <unpitched>
+          <display-step>C</display-step>
+          <display-octave>5</display-octave>
+        </unpitched>
+        <duration>8</duration>
+        <instrument id="P1-I39"/>
+        <voice>1</voice>
+        <type>quarter</type>
+        <stem>up</stem>
+        <staff>1</staff>
+      </note>
+
+      <note>
+        <unpitched>
+          <display-step>G</display-step>
+          <display-octave>5</display-octave>
+        </unpitched>
+        <duration>4</duration>
+        <instrument id="P1-I43"/>
+        <voice>1</voice>
+        <type>eighth</type>
+        <notehead>x</notehead>
+        <stem>up</stem>
+        <staff>1</staff>
+      </note>
+
+      <note>
+        <unpitched>
+          <display-step>G</display-step>
+          <display-octave>5</display-octave>
+        </unpitched>
+        <duration>4</duration>
+        <instrument id="P1-I43"/>
+        <voice>1</voice>
+        <type>eighth</type>
+        <notehead>x</notehead>
+        <stem>up</stem>
+        <staff>1</staff>
+      </note>
+      <note>
+        <chord/>
+        <unpitched>
+          <display-step>F</display-step>
+          <display-octave>4</display-octave>
+        </unpitched>
+        <duration>8</duration>
+        <instrument id="P1-I36"/>
+        <voice>2</voice>
+        <type>quarter</type>
+        <stem>down</stem>
+        <staff>1</staff>
+      </note>
+
+      <note>
+        <unpitched>
+          <display-step>G</display-step>
+          <display-octave>5</display-octave>
+        </unpitched>
+        <duration>4</duration>
+        <instrument id="P1-I43"/>
+        <voice>1</voice>
+        <type>eighth</type>
+        <notehead>x</notehead>
+        <stem>up</stem>
+        <staff>1</staff>
+      </note>
+
+      <note>
+        <unpitched>
+          <display-step>G</display-step>
+          <display-octave>5</display-octave>
+        </unpitched>
+        <duration>4</duration>
+        <instrument id="P1-I43"/>
+        <voice>1</voice>
+        <type>eighth</type>
+        <notehead>x</notehead>
+        <stem>up</stem>
+        <staff>1</staff>
+      </note>
+      <note>
+        <chord/>
+        <unpitched>
+          <display-step>C</display-step>
+          <display-octave>5</display-octave>
+        </unpitched>
+        <duration>8</duration>
+        <instrument id="P1-I39"/>
+        <voice>1</voice>
+        <type>quarter</type>
+        <stem>up</stem>
+        <staff>1</staff>
+      </note>
+
+      <note>
+        <unpitched>
+          <display-step>G</display-step>
+          <display-octave>5</display-octave>
+        </unpitched>
+        <duration>4</duration>
+        <instrument id="P1-I43"/>
+        <voice>1</voice>
+        <type>eighth</type>
+        <notehead>x</notehead>
+        <stem>up</stem>
+        <staff>1</staff>
+      </note>
+
+      <barline location="right"><bar-style>light-heavy</bar-style></barline>
+    </measure>
   </part>
 </score-partwise>
 '''
-    return score
 
 
 def main():
@@ -282,16 +235,16 @@ def main():
         sys.exit(1)
 
     clean_score_title = clean_title(file_path)
-    music_xml = build_musicxml(clean_score_title, difficulty)
+    music_xml = build_musicxml(clean_score_title)
 
     print(
         json.dumps(
             {
-                "title": f"Experimental notation for {clean_score_title}",
+                "title": f"Notation reset baseline for {clean_score_title}",
                 "difficulty": difficulty,
-                "confidence": 0.73 if difficulty == "beginner" else 0.79 if difficulty == "intermediate" else 0.84,
+                "confidence": 0.9,
                 "previewMode": "musicxml",
-                "summary": "This pass improves articulation clarity: ghost snare notes are marked more explicitly, accents are cleaner, and hi-hat states are more clearly differentiated.",
+                "summary": "Reset pass: one single 4/4 rock groove bar only. No extra sections, fills, or clutter. The goal is to lock hi-hat/snare/kick placement before rebuilding complexity.",
                 "musicXml": music_xml,
             }
         )
