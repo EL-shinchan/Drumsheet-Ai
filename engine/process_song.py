@@ -5,31 +5,133 @@ import sys
 VALID_DIFFICULTIES = {"beginner", "intermediate", "pro"}
 
 
-def build_sections(difficulty: str):
-    if difficulty == "beginner":
-        return {
-            "confidence": 0.72,
-            "sections": [
-                {"name": "Intro", "bars": ["HH x-x-x-x-\nSD ----o---\nBD o---o---"]},
-                {"name": "Verse", "bars": ["HH x-x-x-x-\nSD ----o---\nBD o-o---o-"]},
-            ],
-        }
+def note(beat, pitch, duration="eighth", accent=False):
+    return {
+        "beat": beat,
+        "pitch": pitch,
+        "duration": duration,
+        "accent": accent,
+    }
 
-    if difficulty == "intermediate":
-        return {
-            "confidence": 0.78,
-            "sections": [
-                {"name": "Intro", "bars": ["HH x-xx-x-x\nSD ----o---\nBD o---o-o-"]},
-                {"name": "Verse", "bars": ["HH x-xx-x-x\nSD ----o-g-\nBD o-o---o-"]},
-            ],
+
+def build_notation_sections(difficulty: str):
+    if difficulty == "beginner":
+        groove_a = {
+            "notes": [
+                note(1.0, "closed-hihat"),
+                note(1.0, "kick"),
+                note(1.5, "closed-hihat"),
+                note(2.0, "closed-hihat"),
+                note(2.0, "snare"),
+                note(2.5, "closed-hihat"),
+                note(3.0, "closed-hihat"),
+                note(3.0, "kick"),
+                note(3.5, "closed-hihat"),
+                note(4.0, "closed-hihat"),
+                note(4.0, "snare"),
+                note(4.5, "closed-hihat"),
+            ]
         }
+        groove_b = {
+            "notes": [
+                note(1.0, "closed-hihat"),
+                note(1.0, "kick"),
+                note(1.5, "closed-hihat"),
+                note(2.0, "closed-hihat"),
+                note(2.0, "snare"),
+                note(2.5, "closed-hihat"),
+                note(3.0, "closed-hihat"),
+                note(3.0, "kick"),
+                note(3.5, "closed-hihat"),
+                note(4.0, "closed-hihat"),
+                note(4.0, "snare"),
+                note(4.5, "closed-hihat"),
+            ]
+        }
+        confidence = 0.74
+    elif difficulty == "intermediate":
+        groove_a = {
+            "notes": [
+                note(1.0, "closed-hihat"),
+                note(1.0, "kick"),
+                note(1.5, "closed-hihat"),
+                note(2.0, "closed-hihat"),
+                note(2.0, "snare", accent=True),
+                note(2.5, "closed-hihat"),
+                note(3.0, "closed-hihat"),
+                note(3.0, "kick"),
+                note(3.5, "closed-hihat"),
+                note(4.0, "closed-hihat"),
+                note(4.0, "snare", accent=True),
+                note(4.5, "closed-hihat"),
+                note(4.5, "kick"),
+            ]
+        }
+        groove_b = {
+            "notes": [
+                note(1.0, "crash", accent=True),
+                note(1.0, "kick"),
+                note(1.5, "closed-hihat"),
+                note(2.0, "closed-hihat"),
+                note(2.0, "snare", accent=True),
+                note(2.5, "closed-hihat"),
+                note(3.0, "closed-hihat"),
+                note(3.0, "kick"),
+                note(3.5, "closed-hihat"),
+                note(4.0, "closed-hihat"),
+                note(4.0, "snare", accent=True),
+                note(4.5, "closed-hihat"),
+                note(4.5, "kick"),
+            ]
+        }
+        confidence = 0.8
+    else:
+        groove_a = {
+            "notes": [
+                note(1.0, "crash", accent=True),
+                note(1.0, "kick"),
+                note(1.5, "closed-hihat"),
+                note(2.0, "closed-hihat"),
+                note(2.0, "snare", accent=True),
+                note(2.5, "closed-hihat"),
+                note(2.5, "kick"),
+                note(3.0, "closed-hihat"),
+                note(3.0, "kick"),
+                note(3.5, "closed-hihat"),
+                note(4.0, "closed-hihat"),
+                note(4.0, "snare", accent=True),
+                note(4.5, "closed-hihat"),
+                note(4.5, "kick"),
+            ]
+        }
+        groove_b = {
+            "notes": [
+                note(1.0, "ride"),
+                note(1.0, "kick"),
+                note(1.5, "ride"),
+                note(2.0, "ride"),
+                note(2.0, "snare", accent=True),
+                note(2.5, "ride"),
+                note(3.0, "ride"),
+                note(3.0, "kick"),
+                note(3.5, "ride"),
+                note(4.0, "ride"),
+                note(4.0, "snare", accent=True),
+                note(4.25, "high-tom"),
+                note(4.5, "floor-tom"),
+                note(4.5, "kick"),
+            ]
+        }
+        confidence = 0.85
 
     return {
-        "confidence": 0.84,
-        "sections": [
-            {"name": "Intro", "bars": ["HH x-xx-x-x\nSD --g-o-g-\nBD o---o-o-"]},
-            {"name": "Verse", "bars": ["HH x-xx-xx-\nSD ----o-g-\nBD oo--o---"]},
-            {"name": "Fill", "bars": ["T1 ----oo--\nT2 --oo----\nFT oo------"]},
+        "confidence": confidence,
+        "notationSections": [
+            {
+                "name": "Experimental groove preview",
+                "timeSignature": "4/4",
+                "measures": [groove_a, groove_b],
+            }
         ],
     }
 
@@ -47,15 +149,17 @@ def main():
         sys.exit(1)
 
     title = os.path.basename(file_path)
-    data = build_sections(difficulty)
+    data = build_notation_sections(difficulty)
 
     print(
         json.dumps(
             {
-                "title": f"Demo chart for {title}",
+                "title": f"Experimental notation for {title}",
                 "difficulty": difficulty,
                 "confidence": data["confidence"],
-                "sections": data["sections"],
+                "previewMode": "experimental-notation",
+                "summary": "This preview renders a short drum-heavy section as real staff-based notation. It is an early notation experiment, not full-song transcription yet.",
+                "notationSections": data["notationSections"],
             }
         )
     )
