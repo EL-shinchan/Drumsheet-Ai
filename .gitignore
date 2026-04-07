@@ -1,1 +1,7 @@
 node_modules
+.next
+uploads
+.DS_Store
+**/.DS_Store
+engine/__pycache__
+*.pyc
