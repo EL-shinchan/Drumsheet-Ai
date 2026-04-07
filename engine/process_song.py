@@ -4,226 +4,138 @@ import sys
 from xml.sax.saxutils import escape
 
 VALID_DIFFICULTIES = {"beginner", "intermediate", "pro"}
-
 DIVISIONS = 4
 DURATION_MAP = {"16th": 1, "eighth": 2, "quarter": 4}
 
 DRUM_MAP = {
-    "kick": {
-        "instrument": "P1-I36",
-        "name": "Bass Drum",
-        "step": "F",
-        "octave": 4,
-        "stem": "down",
-        "voice": 2,
-    },
-    "snare": {
-        "instrument": "P1-I39",
-        "name": "Snare Drum",
-        "step": "C",
-        "octave": 5,
-        "stem": "up",
-        "voice": 1,
-    },
-    "ghost-snare": {
-        "instrument": "P1-I39",
-        "name": "Snare Drum",
-        "step": "C",
-        "octave": 5,
-        "stem": "up",
-        "voice": 1,
-        "parentheses": True,
-    },
-    "closed-hihat": {
-        "instrument": "P1-I43",
-        "name": "Closed Hi-Hat",
-        "step": "G",
-        "octave": 5,
-        "stem": "up",
-        "voice": 1,
-        "notehead": "x",
-    },
-    "open-hihat": {
-        "instrument": "P1-I43",
-        "name": "Open Hi-Hat",
-        "step": "G",
-        "octave": 5,
-        "stem": "up",
-        "voice": 1,
-        "notehead": "x",
-        "open": True,
-    },
-    "ride": {
-        "instrument": "P1-I51",
-        "name": "Ride Cymbal",
-        "step": "A",
-        "octave": 5,
-        "stem": "up",
-        "voice": 1,
-        "notehead": "x",
-    },
-    "crash": {
-        "instrument": "P1-I49",
-        "name": "Crash Cymbal",
-        "step": "A",
-        "octave": 5,
-        "stem": "up",
-        "voice": 1,
-        "notehead": "x",
-    },
-    "high-tom": {
-        "instrument": "P1-I48",
-        "name": "High Tom",
-        "step": "E",
-        "octave": 5,
-        "stem": "up",
-        "voice": 1,
-    },
-    "mid-tom": {
-        "instrument": "P1-I47",
-        "name": "Mid Tom",
-        "step": "D",
-        "octave": 5,
-        "stem": "up",
-        "voice": 1,
-    },
-    "floor-tom": {
-        "instrument": "P1-I41",
-        "name": "Floor Tom",
-        "step": "A",
-        "octave": 4,
-        "stem": "up",
-        "voice": 1,
-    },
-    "hihat-foot": {
-        "instrument": "P1-I44",
-        "name": "Hi-Hat Foot",
-        "step": "D",
-        "octave": 4,
-        "stem": "down",
-        "voice": 2,
-        "notehead": "x",
-    },
+    "kick": {"instrument": "P1-I36", "name": "Bass Drum", "step": "F", "octave": 4, "stem": "down", "voice": 2},
+    "snare": {"instrument": "P1-I39", "name": "Snare Drum", "step": "C", "octave": 5, "stem": "up", "voice": 1},
+    "ghost-snare": {"instrument": "P1-I39", "name": "Snare Drum", "step": "C", "octave": 5, "stem": "up", "voice": 1, "parentheses": True},
+    "closed-hihat": {"instrument": "P1-I43", "name": "Closed Hi-Hat", "step": "G", "octave": 5, "stem": "up", "voice": 1, "notehead": "x"},
+    "open-hihat": {"instrument": "P1-I43", "name": "Open Hi-Hat", "step": "G", "octave": 5, "stem": "up", "voice": 1, "notehead": "x", "open": True},
+    "ride": {"instrument": "P1-I51", "name": "Ride Cymbal", "step": "A", "octave": 5, "stem": "up", "voice": 1, "notehead": "x"},
+    "crash": {"instrument": "P1-I49", "name": "Crash Cymbal", "step": "A", "octave": 5, "stem": "up", "voice": 1, "notehead": "x"},
+    "high-tom": {"instrument": "P1-I48", "name": "High Tom", "step": "E", "octave": 5, "stem": "up", "voice": 1},
+    "mid-tom": {"instrument": "P1-I47", "name": "Mid Tom", "step": "D", "octave": 5, "stem": "up", "voice": 1},
+    "floor-tom": {"instrument": "P1-I41", "name": "Floor Tom", "step": "A", "octave": 4, "stem": "up", "voice": 1},
+    "hihat-foot": {"instrument": "P1-I44", "name": "Hi-Hat Foot", "step": "D", "octave": 4, "stem": "down", "voice": 2, "notehead": "x"},
 }
 
-
 INSTRUMENT_ORDER = [
-    "kick",
-    "snare",
-    "closed-hihat",
-    "open-hihat",
-    "ride",
-    "crash",
-    "high-tom",
-    "mid-tom",
-    "floor-tom",
-    "hihat-foot",
+    "kick", "snare", "closed-hihat", "open-hihat", "ride", "crash", "high-tom", "mid-tom", "floor-tom", "hihat-foot"
 ]
 
 
 def event(at, drum, duration="eighth", accent=False):
+    return {"at": at, "drum": drum, "duration": duration, "accent": accent}
+
+
+def beginner_measure_one():
     return {
-        "at": at,
-        "drum": drum,
-        "duration": duration,
-        "accent": accent,
+        "label": "Intro",
+        "events": [
+            event(0, "closed-hihat"), event(0, "kick", "quarter"),
+            event(2, "closed-hihat"),
+            event(4, "closed-hihat"), event(4, "snare", "quarter"),
+            event(6, "closed-hihat"),
+            event(8, "closed-hihat"), event(8, "kick", "quarter"),
+            event(10, "closed-hihat"),
+            event(12, "closed-hihat"), event(12, "snare", "quarter"),
+            event(14, "closed-hihat"),
+        ],
+    }
+
+
+def beginner_measure_two():
+    return {
+        "label": "Verse",
+        "events": [
+            event(0, "crash", accent=True), event(0, "kick", "quarter"),
+            event(2, "closed-hihat"),
+            event(4, "closed-hihat"), event(4, "snare", "quarter"),
+            event(6, "closed-hihat"),
+            event(8, "closed-hihat"), event(8, "kick", "quarter"),
+            event(10, "closed-hihat"),
+            event(12, "closed-hihat"), event(12, "snare", "quarter"),
+            event(14, "open-hihat"),
+        ],
+    }
+
+
+def intermediate_measure_one():
+    return {
+        "label": "Verse",
+        "events": [
+            event(0, "crash", accent=True), event(0, "kick", "quarter"),
+            event(2, "closed-hihat"),
+            event(4, "closed-hihat"), event(4, "snare", "quarter", accent=True),
+            event(6, "closed-hihat"), event(7, "ghost-snare", "16th"),
+            event(8, "closed-hihat"), event(8, "kick", "quarter"),
+            event(10, "closed-hihat"), event(10, "kick", "eighth"),
+            event(12, "closed-hihat"), event(12, "snare", "quarter", accent=True),
+            event(14, "open-hihat"),
+        ],
+    }
+
+
+def intermediate_measure_two():
+    return {
+        "label": "Fill / transition",
+        "events": [
+            event(0, "ride"), event(0, "kick", "quarter"),
+            event(2, "ride"),
+            event(4, "ride"), event(4, "snare", "quarter", accent=True),
+            event(6, "ride"),
+            event(8, "ride"), event(8, "kick", "quarter"),
+            event(10, "high-tom", "16th"),
+            event(11, "mid-tom", "16th"),
+            event(12, "floor-tom", "16th"),
+            event(13, "snare", "16th", accent=True),
+            event(14, "crash", accent=True), event(14, "kick", "quarter"),
+        ],
+    }
+
+
+def pro_measure_one():
+    return {
+        "label": "Verse",
+        "events": [
+            event(0, "crash", accent=True), event(0, "kick", "quarter"),
+            event(2, "closed-hihat"),
+            event(4, "closed-hihat"), event(4, "snare", "quarter", accent=True),
+            event(5, "ghost-snare", "16th"),
+            event(6, "closed-hihat"), event(6, "kick", "eighth"),
+            event(8, "closed-hihat"), event(8, "kick", "quarter"),
+            event(10, "closed-hihat"), event(11, "ghost-snare", "16th"),
+            event(12, "closed-hihat"), event(12, "snare", "quarter", accent=True),
+            event(14, "open-hihat"), event(14, "kick", "quarter"),
+        ],
+    }
+
+
+def pro_measure_two():
+    return {
+        "label": "Verse variation",
+        "events": [
+            event(0, "ride"), event(0, "kick", "quarter"),
+            event(2, "ride"), event(2, "kick", "eighth"),
+            event(4, "ride"), event(4, "snare", "quarter", accent=True),
+            event(5, "ghost-snare", "16th"),
+            event(6, "ride"),
+            event(8, "ride"), event(8, "kick", "quarter"),
+            event(10, "ride"), event(10, "kick", "eighth"),
+            event(12, "ride"), event(12, "snare", "quarter", accent=True),
+            event(14, "ride"), event(14, "kick", "quarter"),
+        ],
     }
 
 
 def build_measures(difficulty: str):
     if difficulty == "beginner":
-        return [
-            {
-                "label": "Intro",
-                "events": [
-                    event(0, "closed-hihat"), event(0, "kick", "quarter"),
-                    event(2, "closed-hihat"),
-                    event(4, "closed-hihat"), event(4, "snare", "quarter"),
-                    event(6, "closed-hihat"),
-                    event(8, "closed-hihat"), event(8, "kick", "quarter"),
-                    event(10, "closed-hihat"),
-                    event(12, "closed-hihat"), event(12, "snare", "quarter"),
-                    event(14, "closed-hihat"),
-                ],
-            },
-            {
-                "label": "Verse",
-                "events": [
-                    event(0, "crash", accent=True), event(0, "kick", "quarter"),
-                    event(2, "closed-hihat"),
-                    event(4, "closed-hihat"), event(4, "snare", "quarter"),
-                    event(6, "closed-hihat"),
-                    event(8, "closed-hihat"), event(8, "kick", "quarter"),
-                    event(10, "closed-hihat"),
-                    event(12, "closed-hihat"), event(12, "snare", "quarter"),
-                    event(14, "closed-hihat"),
-                ],
-            },
-        ]
-
+        return [beginner_measure_one(), beginner_measure_two()]
     if difficulty == "intermediate":
-        return [
-            {
-                "label": "Verse",
-                "events": [
-                    event(0, "crash", accent=True), event(0, "kick", "quarter"),
-                    event(2, "closed-hihat"),
-                    event(4, "closed-hihat"), event(4, "snare", "quarter", accent=True),
-                    event(6, "closed-hihat"), event(7, "ghost-snare", "16th"),
-                    event(8, "closed-hihat"), event(8, "kick", "quarter"),
-                    event(10, "closed-hihat"),
-                    event(12, "closed-hihat"), event(12, "snare", "quarter", accent=True),
-                    event(14, "open-hihat"), event(14, "kick", "quarter"),
-                ],
-            },
-            {
-                "label": "Fill / transition",
-                "events": [
-                    event(0, "ride"), event(0, "kick", "quarter"),
-                    event(2, "ride"),
-                    event(4, "ride"), event(4, "snare", "quarter", accent=True),
-                    event(6, "ride"),
-                    event(8, "ride"), event(8, "kick", "quarter"),
-                    event(10, "high-tom", "16th"),
-                    event(11, "mid-tom", "16th"),
-                    event(12, "floor-tom", "16th"),
-                    event(13, "snare", "16th", accent=True),
-                    event(14, "crash", accent=True), event(14, "kick", "quarter"),
-                ],
-            },
-        ]
-
-    return [
-        {
-            "label": "Verse",
-            "events": [
-                event(0, "crash", accent=True), event(0, "kick", "quarter"),
-                event(2, "closed-hihat"),
-                event(4, "closed-hihat"), event(4, "snare", "quarter", accent=True),
-                event(5, "ghost-snare", "16th"),
-                event(6, "closed-hihat"), event(6, "kick", "eighth"),
-                event(8, "closed-hihat"), event(8, "kick", "quarter"),
-                event(10, "closed-hihat"),
-                event(12, "closed-hihat"), event(12, "snare", "quarter", accent=True),
-                event(14, "open-hihat"), event(14, "kick", "quarter"),
-            ],
-        },
-        {
-            "label": "Fill / transition",
-            "events": [
-                event(0, "ride"), event(0, "kick", "quarter"),
-                event(2, "ride"),
-                event(4, "ride"), event(4, "snare", "quarter", accent=True),
-                event(6, "ride"), event(7, "ghost-snare", "16th"),
-                event(8, "ride"), event(8, "kick", "quarter"),
-                event(10, "high-tom", "16th"),
-                event(11, "mid-tom", "16th"),
-                event(12, "floor-tom", "16th"),
-                event(13, "snare", "16th", accent=True),
-                event(14, "crash", accent=True), event(14, "kick", "quarter"), event(14, "hihat-foot", "quarter"),
-            ],
-        },
-    ]
+        return [intermediate_measure_one(), intermediate_measure_two()]
+    return [pro_measure_one(), pro_measure_two()]
 
 
 def note_xml(event_data):
@@ -241,8 +153,7 @@ def note_xml(event_data):
     if drum.get("notehead"):
         xml.append(f"      <notehead>{drum['notehead']}</notehead>")
     xml.append(f"      <stem>{drum['stem']}</stem>")
-    if drum["voice"] == 2:
-        xml.append("      <staff>1</staff>")
+    xml.append("      <staff>1</staff>")
     if event_data.get("accent") or drum.get("parentheses") or drum.get("open"):
         xml.append("      <notations>")
         if event_data.get("accent"):
@@ -277,6 +188,9 @@ def build_musicxml(title: str, difficulty: str):
             measure_xml.append("    <direction placement=\"above\">")
             measure_xml.append(f"      <direction-type><words relative-y=\"12\">{escape(measure['label'])}</words></direction-type>")
             measure_xml.append("    </direction>")
+            measure_xml.append("    <attributes>")
+            measure_xml.append("      <time><beats>4</beats><beat-type>4</beat-type></time>")
+            measure_xml.append("    </attributes>")
 
         for event_data in measure["events"]:
             measure_xml.append(note_xml(event_data))
@@ -335,9 +249,9 @@ def main():
             {
                 "title": f"Experimental notation for {title}",
                 "difficulty": difficulty,
-                "confidence": 0.65 if difficulty == "beginner" else 0.71 if difficulty == "intermediate" else 0.75,
+                "confidence": 0.66 if difficulty == "beginner" else 0.72 if difficulty == "intermediate" else 0.77,
                 "previewMode": "musicxml",
-                "summary": "This version tightens the drum key mapping: clearer kick/snare placement, better cymbal noteheads, open-vs-closed hat distinction, and more sensible hand/foot voice setup.",
+                "summary": "This pass uses actual groove templates instead of disconnected percussion events, so hi-hat/ride, snare backbeats, and kick patterns behave more like real drum grooves.",
                 "musicXml": music_xml,
             }
         )
