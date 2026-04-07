@@ -1,11 +1,13 @@
 import json
 import os
 import sys
+from collections import defaultdict
 from xml.sax.saxutils import escape
 
 VALID_DIFFICULTIES = {"beginner", "intermediate", "pro"}
 DIVISIONS = 4
 DURATION_MAP = {"16th": 1, "eighth": 2, "quarter": 4}
+BACKUP_OCTAVE = 4
 
 DRUM_MAP = {
     "kick": {"instrument": "P1-I36", "name": "Bass Drum", "step": "F", "octave": 4, "stem": "down", "voice": 2},
@@ -26,8 +28,12 @@ INSTRUMENT_ORDER = [
 ]
 
 
+class Event(dict):
+    pass
+
+
 def event(at, drum, duration="eighth", accent=False):
-    return {"at": at, "drum": drum, "duration": duration, "accent": accent}
+    return Event({"at": at, "drum": drum, "duration": duration, "accent": accent})
 
 
 def beginner_measure_one():
@@ -138,33 +144,39 @@ def build_measures(difficulty: str):
     return [pro_measure_one(), pro_measure_two()]
 
 
-def note_xml(event_data):
-    drum = DRUM_MAP[event_data["drum"]]
-    duration_value = DURATION_MAP[event_data["duration"]]
-    xml = ["    <note>"]
-    xml.append("      <unpitched>")
-    xml.append(f"        <display-step>{drum['step']}</display-step>")
-    xml.append(f"        <display-octave>{drum['octave']}</display-octave>")
-    xml.append("      </unpitched>")
-    xml.append(f"      <duration>{duration_value}</duration>")
-    xml.append(f"      <instrument id=\"{drum['instrument']}\"/>")
-    xml.append(f"      <voice>{drum['voice']}</voice>")
-    xml.append(f"      <type>{event_data['duration']}</type>")
-    if drum.get("notehead"):
-        xml.append(f"      <notehead>{drum['notehead']}</notehead>")
-    xml.append(f"      <stem>{drum['stem']}</stem>")
-    xml.append("      <staff>1</staff>")
-    if event_data.get("accent") or drum.get("parentheses") or drum.get("open"):
-        xml.append("      <notations>")
-        if event_data.get("accent"):
-            xml.append("        <articulations><accent/></articulations>")
-        if drum.get("open"):
-            xml.append("        <technical><open-string/></technical>")
-        xml.append("      </notations>")
-    if drum.get("parentheses"):
-        xml.append("      <play><mute>straight</mute></play>")
-    xml.append("    </note>")
-    return "\n".join(xml)
+def chord_xml(events_group):
+    ordered = sorted(events_group, key=lambda item: (DRUM_MAP[item["drum"]]["voice"], -DRUM_MAP[item["drum"]]["octave"]))
+    xml_parts = []
+    for index, event_data in enumerate(ordered):
+        drum = DRUM_MAP[event_data["drum"]]
+        duration_value = DURATION_MAP[event_data["duration"]]
+        xml = ["    <note>"]
+        if index > 0:
+            xml.append("      <chord/>")
+        xml.append("      <unpitched>")
+        xml.append(f"        <display-step>{drum['step']}</display-step>")
+        xml.append(f"        <display-octave>{drum['octave']}</display-octave>")
+        xml.append("      </unpitched>")
+        xml.append(f"      <duration>{duration_value}</duration>")
+        xml.append(f"      <instrument id=\"{drum['instrument']}\"/>")
+        xml.append(f"      <voice>{drum['voice']}</voice>")
+        xml.append(f"      <type>{event_data['duration']}</type>")
+        if drum.get("notehead"):
+            xml.append(f"      <notehead>{drum['notehead']}</notehead>")
+        xml.append(f"      <stem>{drum['stem']}</stem>")
+        xml.append("      <staff>1</staff>")
+        if event_data.get("accent") or drum.get("parentheses") or drum.get("open"):
+            xml.append("      <notations>")
+            if event_data.get("accent"):
+                xml.append("        <articulations><accent/></articulations>")
+            if drum.get("open"):
+                xml.append("        <technical><open-string/></technical>")
+            xml.append("      </notations>")
+        if drum.get("parentheses"):
+            xml.append("      <play><mute>straight</mute></play>")
+        xml.append("    </note>")
+        xml_parts.append("\n".join(xml))
+    return xml_parts
 
 
 def build_musicxml(title: str, difficulty: str):
@@ -172,6 +184,10 @@ def build_musicxml(title: str, difficulty: str):
     measure_xml = []
 
     for index, measure in enumerate(measures, start=1):
+        grouped = defaultdict(list)
+        for event_data in measure["events"]:
+            grouped[event_data["at"]].append(event_data)
+
         measure_xml.append(f'  <measure number="{index}">')
         if index == 1:
             measure_xml.append("    <attributes>")
@@ -181,25 +197,27 @@ def build_musicxml(title: str, difficulty: str):
             measure_xml.append("      <staves>1</staves>")
             measure_xml.append("      <clef number=\"1\"><sign>percussion</sign><line>2</line></clef>")
             measure_xml.append("    </attributes>")
-            measure_xml.append("    <direction placement=\"above\">")
-            measure_xml.append(f"      <direction-type><words relative-y=\"12\">{escape(measure['label'])}</words></direction-type>")
-            measure_xml.append("    </direction>")
         else:
-            measure_xml.append("    <direction placement=\"above\">")
-            measure_xml.append(f"      <direction-type><words relative-y=\"12\">{escape(measure['label'])}</words></direction-type>")
-            measure_xml.append("    </direction>")
             measure_xml.append("    <attributes>")
             measure_xml.append("      <time><beats>4</beats><beat-type>4</beat-type></time>")
             measure_xml.append("    </attributes>")
 
-        for event_data in measure["events"]:
-            measure_xml.append(note_xml(event_data))
+        measure_xml.append("    <direction placement=\"above\">")
+        measure_xml.append(f"      <direction-type><words relative-y=\"12\">{escape(measure['label'])}</words></direction-type>")
+        measure_xml.append("    </direction>")
+
+        for beat in sorted(grouped.keys()):
+            measure_xml.extend(chord_xml(grouped[beat]))
 
         measure_xml.append("  </measure>")
 
     score_instruments = []
+    seen = set()
     for key in INSTRUMENT_ORDER:
         drum = DRUM_MAP[key]
+        if drum["instrument"] in seen:
+            continue
+        seen.add(drum["instrument"])
         score_instruments.append(
             f'      <score-instrument id="{drum["instrument"]}"><instrument-name>{escape(drum["name"])}</instrument-name></score-instrument>'
         )
@@ -249,9 +267,9 @@ def main():
             {
                 "title": f"Experimental notation for {title}",
                 "difficulty": difficulty,
-                "confidence": 0.66 if difficulty == "beginner" else 0.72 if difficulty == "intermediate" else 0.77,
+                "confidence": 0.68 if difficulty == "beginner" else 0.74 if difficulty == "intermediate" else 0.79,
                 "previewMode": "musicxml",
-                "summary": "This pass uses actual groove templates instead of disconnected percussion events, so hi-hat/ride, snare backbeats, and kick patterns behave more like real drum grooves.",
+                "summary": "This pass groups simultaneous hits into the same rhythmic moment so hi-hat/ride sits on top of the groove while snare and kick align underneath as one coordinated pattern.",
                 "musicXml": music_xml,
             }
         )
