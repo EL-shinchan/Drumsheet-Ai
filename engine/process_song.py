@@ -5,132 +5,253 @@ from xml.sax.saxutils import escape
 
 VALID_DIFFICULTIES = {"beginner", "intermediate", "pro"}
 
+DIVISIONS = 4
+DURATION_MAP = {"16th": 1, "eighth": 2, "quarter": 4}
+
+DRUM_MAP = {
+    "kick": {
+        "instrument": "P1-I36",
+        "name": "Bass Drum",
+        "step": "F",
+        "octave": 4,
+        "stem": "down",
+        "voice": 2,
+    },
+    "snare": {
+        "instrument": "P1-I39",
+        "name": "Snare Drum",
+        "step": "C",
+        "octave": 5,
+        "stem": "up",
+        "voice": 1,
+    },
+    "ghost-snare": {
+        "instrument": "P1-I39",
+        "name": "Snare Drum",
+        "step": "C",
+        "octave": 5,
+        "stem": "up",
+        "voice": 1,
+        "parentheses": True,
+    },
+    "closed-hihat": {
+        "instrument": "P1-I43",
+        "name": "Closed Hi-Hat",
+        "step": "G",
+        "octave": 5,
+        "stem": "up",
+        "voice": 1,
+        "notehead": "x",
+    },
+    "open-hihat": {
+        "instrument": "P1-I43",
+        "name": "Open Hi-Hat",
+        "step": "G",
+        "octave": 5,
+        "stem": "up",
+        "voice": 1,
+        "notehead": "x",
+        "open": True,
+    },
+    "ride": {
+        "instrument": "P1-I51",
+        "name": "Ride Cymbal",
+        "step": "A",
+        "octave": 5,
+        "stem": "up",
+        "voice": 1,
+        "notehead": "x",
+    },
+    "crash": {
+        "instrument": "P1-I49",
+        "name": "Crash Cymbal",
+        "step": "A",
+        "octave": 5,
+        "stem": "up",
+        "voice": 1,
+        "notehead": "x",
+    },
+    "high-tom": {
+        "instrument": "P1-I48",
+        "name": "High Tom",
+        "step": "E",
+        "octave": 5,
+        "stem": "up",
+        "voice": 1,
+    },
+    "mid-tom": {
+        "instrument": "P1-I47",
+        "name": "Mid Tom",
+        "step": "D",
+        "octave": 5,
+        "stem": "up",
+        "voice": 1,
+    },
+    "floor-tom": {
+        "instrument": "P1-I41",
+        "name": "Floor Tom",
+        "step": "A",
+        "octave": 4,
+        "stem": "up",
+        "voice": 1,
+    },
+    "hihat-foot": {
+        "instrument": "P1-I44",
+        "name": "Hi-Hat Foot",
+        "step": "D",
+        "octave": 4,
+        "stem": "down",
+        "voice": 2,
+        "notehead": "x",
+    },
+}
+
+
+INSTRUMENT_ORDER = [
+    "kick",
+    "snare",
+    "closed-hihat",
+    "open-hihat",
+    "ride",
+    "crash",
+    "high-tom",
+    "mid-tom",
+    "floor-tom",
+    "hihat-foot",
+]
+
+
+def event(at, drum, duration="eighth", accent=False):
+    return {
+        "at": at,
+        "drum": drum,
+        "duration": duration,
+        "accent": accent,
+    }
+
 
 def build_measures(difficulty: str):
     if difficulty == "beginner":
         return [
-            [
-                {"voice": 1, "type": "eighth", "instrument": "P1-I43", "display_step": "G", "display_octave": 5, "notehead": "x"},
-                {"voice": 2, "type": "quarter", "instrument": "P1-I36", "display_step": "F", "display_octave": 4},
-                {"voice": 1, "type": "eighth", "instrument": "P1-I43", "display_step": "G", "display_octave": 5, "notehead": "x"},
-                {"voice": 1, "type": "eighth", "instrument": "P1-I43", "display_step": "G", "display_octave": 5, "notehead": "x"},
-                {"voice": 2, "type": "quarter", "instrument": "P1-I39", "display_step": "C", "display_octave": 5},
-                {"voice": 1, "type": "eighth", "instrument": "P1-I43", "display_step": "G", "display_octave": 5, "notehead": "x"},
-                {"voice": 1, "type": "eighth", "instrument": "P1-I43", "display_step": "G", "display_octave": 5, "notehead": "x"},
-                {"voice": 2, "type": "quarter", "instrument": "P1-I36", "display_step": "F", "display_octave": 4},
-                {"voice": 1, "type": "eighth", "instrument": "P1-I43", "display_step": "G", "display_octave": 5, "notehead": "x"},
-                {"voice": 1, "type": "eighth", "instrument": "P1-I43", "display_step": "G", "display_octave": 5, "notehead": "x"},
-                {"voice": 2, "type": "quarter", "instrument": "P1-I39", "display_step": "C", "display_octave": 5},
-                {"voice": 1, "type": "eighth", "instrument": "P1-I43", "display_step": "G", "display_octave": 5, "notehead": "x"},
-            ],
-            [
-                {"voice": 1, "type": "eighth", "instrument": "P1-I49", "display_step": "A", "display_octave": 5, "notehead": "x", "accent": True},
-                {"voice": 2, "type": "quarter", "instrument": "P1-I36", "display_step": "F", "display_octave": 4},
-                {"voice": 1, "type": "eighth", "instrument": "P1-I43", "display_step": "G", "display_octave": 5, "notehead": "x"},
-                {"voice": 1, "type": "eighth", "instrument": "P1-I43", "display_step": "G", "display_octave": 5, "notehead": "x"},
-                {"voice": 2, "type": "quarter", "instrument": "P1-I39", "display_step": "C", "display_octave": 5},
-                {"voice": 1, "type": "eighth", "instrument": "P1-I43", "display_step": "G", "display_octave": 5, "notehead": "x"},
-                {"voice": 1, "type": "eighth", "instrument": "P1-I43", "display_step": "G", "display_octave": 5, "notehead": "x"},
-                {"voice": 2, "type": "quarter", "instrument": "P1-I36", "display_step": "F", "display_octave": 4},
-                {"voice": 1, "type": "eighth", "instrument": "P1-I43", "display_step": "G", "display_octave": 5, "notehead": "x"},
-                {"voice": 1, "type": "eighth", "instrument": "P1-I43", "display_step": "G", "display_octave": 5, "notehead": "x"},
-                {"voice": 2, "type": "quarter", "instrument": "P1-I39", "display_step": "C", "display_octave": 5},
-                {"voice": 1, "type": "eighth", "instrument": "P1-I43", "display_step": "G", "display_octave": 5, "notehead": "x"},
-            ],
+            {
+                "label": "Intro",
+                "events": [
+                    event(0, "closed-hihat"), event(0, "kick", "quarter"),
+                    event(2, "closed-hihat"),
+                    event(4, "closed-hihat"), event(4, "snare", "quarter"),
+                    event(6, "closed-hihat"),
+                    event(8, "closed-hihat"), event(8, "kick", "quarter"),
+                    event(10, "closed-hihat"),
+                    event(12, "closed-hihat"), event(12, "snare", "quarter"),
+                    event(14, "closed-hihat"),
+                ],
+            },
+            {
+                "label": "Verse",
+                "events": [
+                    event(0, "crash", accent=True), event(0, "kick", "quarter"),
+                    event(2, "closed-hihat"),
+                    event(4, "closed-hihat"), event(4, "snare", "quarter"),
+                    event(6, "closed-hihat"),
+                    event(8, "closed-hihat"), event(8, "kick", "quarter"),
+                    event(10, "closed-hihat"),
+                    event(12, "closed-hihat"), event(12, "snare", "quarter"),
+                    event(14, "closed-hihat"),
+                ],
+            },
         ]
 
     if difficulty == "intermediate":
         return [
-            [
-                {"voice": 1, "type": "eighth", "instrument": "P1-I49", "display_step": "A", "display_octave": 5, "notehead": "x", "accent": True},
-                {"voice": 2, "type": "quarter", "instrument": "P1-I36", "display_step": "F", "display_octave": 4},
-                {"voice": 1, "type": "eighth", "instrument": "P1-I43", "display_step": "G", "display_octave": 5, "notehead": "x"},
-                {"voice": 1, "type": "eighth", "instrument": "P1-I43", "display_step": "G", "display_octave": 5, "notehead": "x"},
-                {"voice": 2, "type": "quarter", "instrument": "P1-I39", "display_step": "C", "display_octave": 5, "accent": True},
-                {"voice": 1, "type": "eighth", "instrument": "P1-I43", "display_step": "G", "display_octave": 5, "notehead": "x"},
-                {"voice": 1, "type": "eighth", "instrument": "P1-I43", "display_step": "G", "display_octave": 5, "notehead": "x", "ghost": True},
-                {"voice": 2, "type": "quarter", "instrument": "P1-I36", "display_step": "F", "display_octave": 4},
-                {"voice": 1, "type": "eighth", "instrument": "P1-I43", "display_step": "G", "display_octave": 5, "notehead": "x"},
-                {"voice": 1, "type": "eighth", "instrument": "P1-I43", "display_step": "G", "display_octave": 5, "notehead": "x"},
-                {"voice": 2, "type": "quarter", "instrument": "P1-I39", "display_step": "C", "display_octave": 5, "accent": True},
-                {"voice": 1, "type": "eighth", "instrument": "P1-I43", "display_step": "G", "display_octave": 5, "notehead": "x"},
-            ],
-            [
-                {"voice": 1, "type": "eighth", "instrument": "P1-I51", "display_step": "A", "display_octave": 5, "notehead": "x"},
-                {"voice": 2, "type": "quarter", "instrument": "P1-I36", "display_step": "F", "display_octave": 4},
-                {"voice": 1, "type": "eighth", "instrument": "P1-I51", "display_step": "A", "display_octave": 5, "notehead": "x"},
-                {"voice": 1, "type": "eighth", "instrument": "P1-I51", "display_step": "A", "display_octave": 5, "notehead": "x"},
-                {"voice": 2, "type": "quarter", "instrument": "P1-I39", "display_step": "C", "display_octave": 5, "accent": True},
-                {"voice": 1, "type": "eighth", "instrument": "P1-I51", "display_step": "A", "display_octave": 5, "notehead": "x"},
-                {"voice": 1, "type": "eighth", "instrument": "P1-I51", "display_step": "A", "display_octave": 5, "notehead": "x"},
-                {"voice": 2, "type": "quarter", "instrument": "P1-I36", "display_step": "F", "display_octave": 4},
-                {"voice": 1, "type": "eighth", "instrument": "P1-I51", "display_step": "A", "display_octave": 5, "notehead": "x"},
-                {"voice": 1, "type": "eighth", "instrument": "P1-I48", "display_step": "E", "display_octave": 5},
-                {"voice": 1, "type": "eighth", "instrument": "P1-I45", "display_step": "D", "display_octave": 5},
-                {"voice": 2, "type": "quarter", "instrument": "P1-I36", "display_step": "F", "display_octave": 4},
-            ],
+            {
+                "label": "Verse",
+                "events": [
+                    event(0, "crash", accent=True), event(0, "kick", "quarter"),
+                    event(2, "closed-hihat"),
+                    event(4, "closed-hihat"), event(4, "snare", "quarter", accent=True),
+                    event(6, "closed-hihat"), event(7, "ghost-snare", "16th"),
+                    event(8, "closed-hihat"), event(8, "kick", "quarter"),
+                    event(10, "closed-hihat"),
+                    event(12, "closed-hihat"), event(12, "snare", "quarter", accent=True),
+                    event(14, "open-hihat"), event(14, "kick", "quarter"),
+                ],
+            },
+            {
+                "label": "Fill / transition",
+                "events": [
+                    event(0, "ride"), event(0, "kick", "quarter"),
+                    event(2, "ride"),
+                    event(4, "ride"), event(4, "snare", "quarter", accent=True),
+                    event(6, "ride"),
+                    event(8, "ride"), event(8, "kick", "quarter"),
+                    event(10, "high-tom", "16th"),
+                    event(11, "mid-tom", "16th"),
+                    event(12, "floor-tom", "16th"),
+                    event(13, "snare", "16th", accent=True),
+                    event(14, "crash", accent=True), event(14, "kick", "quarter"),
+                ],
+            },
         ]
 
     return [
-        [
-            {"voice": 1, "type": "eighth", "instrument": "P1-I49", "display_step": "A", "display_octave": 5, "notehead": "x", "accent": True},
-            {"voice": 2, "type": "quarter", "instrument": "P1-I36", "display_step": "F", "display_octave": 4},
-            {"voice": 1, "type": "eighth", "instrument": "P1-I43", "display_step": "G", "display_octave": 5, "notehead": "x"},
-            {"voice": 1, "type": "16th", "instrument": "P1-I43", "display_step": "G", "display_octave": 5, "notehead": "x"},
-            {"voice": 1, "type": "16th", "instrument": "P1-I39", "display_step": "C", "display_octave": 5, "ghost": True},
-            {"voice": 2, "type": "quarter", "instrument": "P1-I39", "display_step": "C", "display_octave": 5, "accent": True},
-            {"voice": 1, "type": "eighth", "instrument": "P1-I43", "display_step": "G", "display_octave": 5, "notehead": "x"},
-            {"voice": 1, "type": "eighth", "instrument": "P1-I43", "display_step": "G", "display_octave": 5, "notehead": "x"},
-            {"voice": 2, "type": "quarter", "instrument": "P1-I36", "display_step": "F", "display_octave": 4},
-            {"voice": 1, "type": "eighth", "instrument": "P1-I43", "display_step": "G", "display_octave": 5, "notehead": "x"},
-            {"voice": 1, "type": "16th", "instrument": "P1-I48", "display_step": "E", "display_octave": 5},
-            {"voice": 1, "type": "16th", "instrument": "P1-I45", "display_step": "D", "display_octave": 5},
-            {"voice": 2, "type": "quarter", "instrument": "P1-I36", "display_step": "F", "display_octave": 4},
-        ],
-        [
-            {"voice": 1, "type": "eighth", "instrument": "P1-I51", "display_step": "A", "display_octave": 5, "notehead": "x"},
-            {"voice": 2, "type": "quarter", "instrument": "P1-I36", "display_step": "F", "display_octave": 4},
-            {"voice": 1, "type": "eighth", "instrument": "P1-I51", "display_step": "A", "display_octave": 5, "notehead": "x"},
-            {"voice": 1, "type": "16th", "instrument": "P1-I51", "display_step": "A", "display_octave": 5, "notehead": "x"},
-            {"voice": 1, "type": "16th", "instrument": "P1-I39", "display_step": "C", "display_octave": 5, "ghost": True},
-            {"voice": 2, "type": "quarter", "instrument": "P1-I39", "display_step": "C", "display_octave": 5, "accent": True},
-            {"voice": 1, "type": "eighth", "instrument": "P1-I51", "display_step": "A", "display_octave": 5, "notehead": "x"},
-            {"voice": 1, "type": "eighth", "instrument": "P1-I51", "display_step": "A", "display_octave": 5, "notehead": "x"},
-            {"voice": 2, "type": "quarter", "instrument": "P1-I36", "display_step": "F", "display_octave": 4},
-            {"voice": 1, "type": "16th", "instrument": "P1-I48", "display_step": "E", "display_octave": 5},
-            {"voice": 1, "type": "16th", "instrument": "P1-I47", "display_step": "C", "display_octave": 5},
-            {"voice": 1, "type": "16th", "instrument": "P1-I45", "display_step": "D", "display_octave": 5},
-            {"voice": 1, "type": "16th", "instrument": "P1-I41", "display_step": "A", "display_octave": 4},
-        ],
+        {
+            "label": "Verse",
+            "events": [
+                event(0, "crash", accent=True), event(0, "kick", "quarter"),
+                event(2, "closed-hihat"),
+                event(4, "closed-hihat"), event(4, "snare", "quarter", accent=True),
+                event(5, "ghost-snare", "16th"),
+                event(6, "closed-hihat"), event(6, "kick", "eighth"),
+                event(8, "closed-hihat"), event(8, "kick", "quarter"),
+                event(10, "closed-hihat"),
+                event(12, "closed-hihat"), event(12, "snare", "quarter", accent=True),
+                event(14, "open-hihat"), event(14, "kick", "quarter"),
+            ],
+        },
+        {
+            "label": "Fill / transition",
+            "events": [
+                event(0, "ride"), event(0, "kick", "quarter"),
+                event(2, "ride"),
+                event(4, "ride"), event(4, "snare", "quarter", accent=True),
+                event(6, "ride"), event(7, "ghost-snare", "16th"),
+                event(8, "ride"), event(8, "kick", "quarter"),
+                event(10, "high-tom", "16th"),
+                event(11, "mid-tom", "16th"),
+                event(12, "floor-tom", "16th"),
+                event(13, "snare", "16th", accent=True),
+                event(14, "crash", accent=True), event(14, "kick", "quarter"), event(14, "hihat-foot", "quarter"),
+            ],
+        },
     ]
 
 
-def note_xml(note):
-    duration_map = {"16th": 1, "eighth": 2, "quarter": 4}
-    duration_value = duration_map[note["type"]]
+def note_xml(event_data):
+    drum = DRUM_MAP[event_data["drum"]]
+    duration_value = DURATION_MAP[event_data["duration"]]
     xml = ["    <note>"]
     xml.append("      <unpitched>")
-    xml.append(f"        <display-step>{note['display_step']}</display-step>")
-    xml.append(f"        <display-octave>{note['display_octave']}</display-octave>")
+    xml.append(f"        <display-step>{drum['step']}</display-step>")
+    xml.append(f"        <display-octave>{drum['octave']}</display-octave>")
     xml.append("      </unpitched>")
     xml.append(f"      <duration>{duration_value}</duration>")
-    xml.append(f"      <instrument id=\"{note['instrument']}\"/>")
-    xml.append(f"      <voice>{note['voice']}</voice>")
-    xml.append("      <type>{}</type>".format(note["type"]))
-    if note.get("notehead"):
-        xml.append(f"      <notehead>{note['notehead']}</notehead>")
-    xml.append("      <stem>up</stem>")
-    if note.get("accent") or note.get("ghost"):
+    xml.append(f"      <instrument id=\"{drum['instrument']}\"/>")
+    xml.append(f"      <voice>{drum['voice']}</voice>")
+    xml.append(f"      <type>{event_data['duration']}</type>")
+    if drum.get("notehead"):
+        xml.append(f"      <notehead>{drum['notehead']}</notehead>")
+    xml.append(f"      <stem>{drum['stem']}</stem>")
+    if drum["voice"] == 2:
+        xml.append("      <staff>1</staff>")
+    if event_data.get("accent") or drum.get("parentheses") or drum.get("open"):
         xml.append("      <notations>")
-        xml.append("        <articulations>")
-        if note.get("accent"):
-            xml.append("          <accent/>")
-        xml.append("        </articulations>")
-        if note.get("ghost"):
-            xml.append("        <ornaments>")
-            xml.append("          <other-ornament>ghost</other-ornament>")
-            xml.append("        </ornaments>")
+        if event_data.get("accent"):
+            xml.append("        <articulations><accent/></articulations>")
+        if drum.get("open"):
+            xml.append("        <technical><open-string/></technical>")
         xml.append("      </notations>")
+    if drum.get("parentheses"):
+        xml.append("      <play><mute>straight</mute></play>")
     xml.append("    </note>")
     return "\n".join(xml)
 
@@ -139,28 +260,35 @@ def build_musicxml(title: str, difficulty: str):
     measures = build_measures(difficulty)
     measure_xml = []
 
-    for index, notes in enumerate(measures, start=1):
+    for index, measure in enumerate(measures, start=1):
         measure_xml.append(f'  <measure number="{index}">')
         if index == 1:
             measure_xml.append("    <attributes>")
-            measure_xml.append("      <divisions>4</divisions>")
+            measure_xml.append(f"      <divisions>{DIVISIONS}</divisions>")
             measure_xml.append("      <key><fifths>0</fifths></key>")
             measure_xml.append("      <time><beats>4</beats><beat-type>4</beat-type></time>")
             measure_xml.append("      <staves>1</staves>")
             measure_xml.append("      <clef number=\"1\"><sign>percussion</sign><line>2</line></clef>")
             measure_xml.append("    </attributes>")
             measure_xml.append("    <direction placement=\"above\">")
-            measure_xml.append("      <direction-type><words relative-y=\"12\">Intro</words></direction-type>")
+            measure_xml.append(f"      <direction-type><words relative-y=\"12\">{escape(measure['label'])}</words></direction-type>")
             measure_xml.append("    </direction>")
-        if index == 2:
+        else:
             measure_xml.append("    <direction placement=\"above\">")
-            measure_xml.append("      <direction-type><words relative-y=\"12\">Fill / transition</words></direction-type>")
+            measure_xml.append(f"      <direction-type><words relative-y=\"12\">{escape(measure['label'])}</words></direction-type>")
             measure_xml.append("    </direction>")
 
-        for note in notes:
-            measure_xml.append(note_xml(note))
+        for event_data in measure["events"]:
+            measure_xml.append(note_xml(event_data))
 
         measure_xml.append("  </measure>")
+
+    score_instruments = []
+    for key in INSTRUMENT_ORDER:
+        drum = DRUM_MAP[key]
+        score_instruments.append(
+            f'      <score-instrument id="{drum["instrument"]}"><instrument-name>{escape(drum["name"])}</instrument-name></score-instrument>'
+        )
 
     score = f'''<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE score-partwise PUBLIC
@@ -176,16 +304,7 @@ def build_musicxml(title: str, difficulty: str):
   <part-list>
     <score-part id="P1">
       <part-name>Drumset</part-name>
-      <score-instrument id="P1-I36"><instrument-name>Bass Drum</instrument-name></score-instrument>
-      <score-instrument id="P1-I39"><instrument-name>Snare Drum</instrument-name></score-instrument>
-      <score-instrument id="P1-I41"><instrument-name>Floor Tom</instrument-name></score-instrument>
-      <score-instrument id="P1-I43"><instrument-name>Closed Hi-Hat</instrument-name></score-instrument>
-      <score-instrument id="P1-I45"><instrument-name>Low Tom</instrument-name></score-instrument>
-      <score-instrument id="P1-I47"><instrument-name>Mid Tom</instrument-name></score-instrument>
-      <score-instrument id="P1-I48"><instrument-name>High Tom</instrument-name></score-instrument>
-      <score-instrument id="P1-I49"><instrument-name>Crash Cymbal</instrument-name></score-instrument>
-      <score-instrument id="P1-I51"><instrument-name>Ride Cymbal</instrument-name></score-instrument>
-      <midi-device id="P1-I36" port="1"></midi-device>
+{chr(10).join(score_instruments)}
     </score-part>
   </part-list>
   <part id="P1">
@@ -216,9 +335,9 @@ def main():
             {
                 "title": f"Experimental notation for {title}",
                 "difficulty": difficulty,
-                "confidence": 0.62 if difficulty == "beginner" else 0.68 if difficulty == "intermediate" else 0.71,
+                "confidence": 0.65 if difficulty == "beginner" else 0.71 if difficulty == "intermediate" else 0.75,
                 "previewMode": "musicxml",
-                "summary": "This preview is now driven by MusicXML-style score data so spacing, noteheads, and engraving can move toward real notation rules instead of hand-drawn SVG sketches.",
+                "summary": "This version tightens the drum key mapping: clearer kick/snare placement, better cymbal noteheads, open-vs-closed hat distinction, and more sensible hand/foot voice setup.",
                 "musicXml": music_xml,
             }
         )
