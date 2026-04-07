@@ -14,124 +14,129 @@ def note(beat, pitch, duration="eighth", accent=False):
     }
 
 
+def measure(*notes):
+    return {"notes": list(notes)}
+
+
 def build_notation_sections(difficulty: str):
     if difficulty == "beginner":
-        groove_a = {
-            "notes": [
-                note(1.0, "closed-hihat"),
-                note(1.0, "kick"),
-                note(1.5, "closed-hihat"),
-                note(2.0, "closed-hihat"),
-                note(2.0, "snare"),
-                note(2.5, "closed-hihat"),
-                note(3.0, "closed-hihat"),
-                note(3.0, "kick"),
-                note(3.5, "closed-hihat"),
-                note(4.0, "closed-hihat"),
-                note(4.0, "snare"),
-                note(4.5, "closed-hihat"),
-            ]
-        }
-        groove_b = {
-            "notes": [
-                note(1.0, "closed-hihat"),
-                note(1.0, "kick"),
-                note(1.5, "closed-hihat"),
-                note(2.0, "closed-hihat"),
-                note(2.0, "snare"),
-                note(2.5, "closed-hihat"),
-                note(3.0, "closed-hihat"),
-                note(3.0, "kick"),
-                note(3.5, "closed-hihat"),
-                note(4.0, "closed-hihat"),
-                note(4.0, "snare"),
-                note(4.5, "closed-hihat"),
-            ]
-        }
+        intro = [
+            measure(
+                note(1.0, "closed-hihat"), note(1.0, "kick"), note(1.5, "closed-hihat"),
+                note(2.0, "closed-hihat"), note(2.0, "snare"), note(2.5, "closed-hihat"),
+                note(3.0, "closed-hihat"), note(3.0, "kick"), note(3.5, "closed-hihat"),
+                note(4.0, "closed-hihat"), note(4.0, "snare"), note(4.5, "closed-hihat"),
+            ),
+            measure(
+                note(1.0, "closed-hihat"), note(1.0, "kick"), note(1.5, "closed-hihat"),
+                note(2.0, "closed-hihat"), note(2.0, "snare"), note(2.5, "closed-hihat"),
+                note(3.0, "closed-hihat"), note(3.0, "kick"), note(3.5, "closed-hihat"),
+                note(4.0, "closed-hihat"), note(4.0, "snare"), note(4.5, "closed-hihat"),
+            ),
+            measure(
+                note(1.0, "closed-hihat"), note(1.0, "kick"), note(1.5, "closed-hihat"),
+                note(2.0, "closed-hihat"), note(2.0, "snare"), note(2.5, "closed-hihat"),
+                note(3.0, "closed-hihat"), note(3.0, "kick"), note(3.5, "closed-hihat"),
+                note(4.0, "closed-hihat"), note(4.0, "snare"), note(4.5, "closed-hihat"),
+            ),
+            measure(
+                note(1.0, "crash", accent=True), note(1.0, "kick"), note(1.5, "closed-hihat"),
+                note(2.0, "closed-hihat"), note(2.0, "snare"), note(2.5, "closed-hihat"),
+                note(3.0, "closed-hihat"), note(3.0, "kick"), note(3.5, "closed-hihat"),
+                note(4.0, "closed-hihat"), note(4.0, "snare"), note(4.5, "closed-hihat"),
+            ),
+        ]
+        verse = [
+            measure(
+                note(1.0, "closed-hihat"), note(1.0, "kick"), note(1.5, "closed-hihat"),
+                note(2.0, "closed-hihat"), note(2.0, "snare"), note(2.5, "closed-hihat"),
+                note(3.0, "closed-hihat"), note(3.0, "kick"), note(3.5, "closed-hihat"),
+                note(4.0, "closed-hihat"), note(4.0, "snare"), note(4.5, "closed-hihat"),
+            ),
+            measure(
+                note(1.0, "closed-hihat"), note(1.0, "kick"), note(1.5, "closed-hihat"),
+                note(2.0, "closed-hihat"), note(2.0, "snare"), note(2.5, "closed-hihat"),
+                note(3.0, "closed-hihat"), note(3.0, "kick"), note(3.5, "closed-hihat"),
+                note(4.0, "closed-hihat"), note(4.0, "snare"), note(4.5, "closed-hihat"),
+            ),
+            measure(
+                note(1.0, "closed-hihat"), note(1.0, "kick"), note(1.5, "closed-hihat"),
+                note(2.0, "closed-hihat"), note(2.0, "snare"), note(2.5, "closed-hihat"),
+                note(3.0, "closed-hihat"), note(3.0, "kick"), note(3.5, "closed-hihat"),
+                note(4.0, "closed-hihat"), note(4.0, "snare"), note(4.5, "closed-hihat"),
+            ),
+            measure(
+                note(1.0, "crash", accent=True), note(1.0, "kick"), note(1.5, "closed-hihat"),
+                note(2.0, "closed-hihat"), note(2.0, "snare"), note(2.5, "closed-hihat"),
+                note(3.0, "closed-hihat"), note(3.0, "kick"), note(3.5, "closed-hihat"),
+                note(4.0, "closed-hihat"), note(4.0, "snare"), note(4.5, "closed-hihat"),
+            ),
+        ]
         confidence = 0.74
     elif difficulty == "intermediate":
-        groove_a = {
-            "notes": [
-                note(1.0, "closed-hihat"),
-                note(1.0, "kick"),
-                note(1.5, "closed-hihat"),
-                note(2.0, "closed-hihat"),
-                note(2.0, "snare", accent=True),
-                note(2.5, "closed-hihat"),
-                note(3.0, "closed-hihat"),
-                note(3.0, "kick"),
-                note(3.5, "closed-hihat"),
-                note(4.0, "closed-hihat"),
-                note(4.0, "snare", accent=True),
-                note(4.5, "closed-hihat"),
-                note(4.5, "kick"),
-            ]
-        }
-        groove_b = {
-            "notes": [
-                note(1.0, "crash", accent=True),
-                note(1.0, "kick"),
-                note(1.5, "closed-hihat"),
-                note(2.0, "closed-hihat"),
-                note(2.0, "snare", accent=True),
-                note(2.5, "closed-hihat"),
-                note(3.0, "closed-hihat"),
-                note(3.0, "kick"),
-                note(3.5, "closed-hihat"),
-                note(4.0, "closed-hihat"),
-                note(4.0, "snare", accent=True),
-                note(4.5, "closed-hihat"),
-                note(4.5, "kick"),
-            ]
-        }
+        intro = [
+            measure(
+                note(1.0, "closed-hihat"), note(1.0, "kick"), note(1.5, "closed-hihat"),
+                note(2.0, "closed-hihat"), note(2.0, "snare", accent=True), note(2.5, "closed-hihat"),
+                note(3.0, "closed-hihat"), note(3.0, "kick"), note(3.5, "closed-hihat"),
+                note(4.0, "closed-hihat"), note(4.0, "snare", accent=True), note(4.5, "closed-hihat"), note(4.5, "kick"),
+            ),
+            measure(
+                note(1.0, "closed-hihat"), note(1.0, "kick"), note(1.5, "closed-hihat"),
+                note(2.0, "closed-hihat"), note(2.0, "snare", accent=True), note(2.5, "closed-hihat"),
+                note(3.0, "closed-hihat"), note(3.0, "kick"), note(3.5, "closed-hihat"),
+                note(4.0, "closed-hihat"), note(4.0, "snare", accent=True), note(4.5, "closed-hihat"), note(4.5, "kick"),
+            ),
+            measure(
+                note(1.0, "crash", accent=True), note(1.0, "kick"), note(1.5, "closed-hihat"),
+                note(2.0, "closed-hihat"), note(2.0, "snare", accent=True), note(2.5, "closed-hihat"),
+                note(3.0, "closed-hihat"), note(3.0, "kick"), note(3.5, "closed-hihat"),
+                note(4.0, "closed-hihat"), note(4.0, "snare", accent=True), note(4.5, "closed-hihat"), note(4.5, "kick"),
+            ),
+            measure(
+                note(1.0, "closed-hihat"), note(1.0, "kick"), note(1.5, "closed-hihat"),
+                note(2.0, "closed-hihat"), note(2.0, "snare", accent=True), note(2.5, "closed-hihat"),
+                note(3.0, "closed-hihat"), note(3.0, "kick"), note(3.5, "closed-hihat"),
+                note(4.0, "closed-hihat"), note(4.0, "snare", accent=True), note(4.5, "closed-hihat"), note(4.5, "kick"),
+            ),
+        ]
+        verse = intro
         confidence = 0.8
     else:
-        groove_a = {
-            "notes": [
-                note(1.0, "crash", accent=True),
-                note(1.0, "kick"),
-                note(1.5, "closed-hihat"),
-                note(2.0, "closed-hihat"),
-                note(2.0, "snare", accent=True),
-                note(2.5, "closed-hihat"),
-                note(2.5, "kick"),
-                note(3.0, "closed-hihat"),
-                note(3.0, "kick"),
-                note(3.5, "closed-hihat"),
-                note(4.0, "closed-hihat"),
-                note(4.0, "snare", accent=True),
-                note(4.5, "closed-hihat"),
-                note(4.5, "kick"),
-            ]
-        }
-        groove_b = {
-            "notes": [
-                note(1.0, "ride"),
-                note(1.0, "kick"),
-                note(1.5, "ride"),
-                note(2.0, "ride"),
-                note(2.0, "snare", accent=True),
-                note(2.5, "ride"),
-                note(3.0, "ride"),
-                note(3.0, "kick"),
-                note(3.5, "ride"),
-                note(4.0, "ride"),
-                note(4.0, "snare", accent=True),
-                note(4.25, "high-tom"),
-                note(4.5, "floor-tom"),
-                note(4.5, "kick"),
-            ]
-        }
+        intro = [
+            measure(
+                note(1.0, "crash", accent=True), note(1.0, "kick"), note(1.5, "closed-hihat"),
+                note(2.0, "closed-hihat"), note(2.0, "snare", accent=True), note(2.5, "closed-hihat"), note(2.5, "kick"),
+                note(3.0, "closed-hihat"), note(3.0, "kick"), note(3.5, "closed-hihat"),
+                note(4.0, "closed-hihat"), note(4.0, "snare", accent=True), note(4.5, "closed-hihat"), note(4.5, "kick"),
+            ),
+            measure(
+                note(1.0, "ride"), note(1.0, "kick"), note(1.5, "ride"),
+                note(2.0, "ride"), note(2.0, "snare", accent=True), note(2.5, "ride"),
+                note(3.0, "ride"), note(3.0, "kick"), note(3.5, "ride"),
+                note(4.0, "ride"), note(4.0, "snare", accent=True), note(4.25, "high-tom"), note(4.5, "floor-tom"), note(4.5, "kick"),
+            ),
+            measure(
+                note(1.0, "ride"), note(1.0, "kick"), note(1.5, "ride"),
+                note(2.0, "ride"), note(2.0, "snare", accent=True), note(2.5, "ride"),
+                note(3.0, "ride"), note(3.0, "kick"), note(3.5, "ride"),
+                note(4.0, "ride"), note(4.0, "snare", accent=True), note(4.25, "high-tom"), note(4.5, "floor-tom"), note(4.5, "kick"),
+            ),
+            measure(
+                note(1.0, "crash", accent=True), note(1.0, "kick"), note(1.5, "closed-hihat"),
+                note(2.0, "closed-hihat"), note(2.0, "snare", accent=True), note(2.5, "closed-hihat"), note(2.5, "kick"),
+                note(3.0, "closed-hihat"), note(3.0, "kick"), note(3.5, "closed-hihat"),
+                note(4.0, "closed-hihat"), note(4.0, "snare", accent=True), note(4.5, "closed-hihat"), note(4.5, "kick"),
+            ),
+        ]
+        verse = intro
         confidence = 0.85
 
     return {
         "confidence": confidence,
         "notationSections": [
-            {
-                "name": "Experimental groove preview",
-                "timeSignature": "4/4",
-                "measures": [groove_a, groove_b],
-            }
+            {"name": "Intro", "timeSignature": "4/4", "measures": intro},
+            {"name": "Verse", "timeSignature": "4/4", "measures": verse},
         ],
     }
 
@@ -158,7 +163,7 @@ def main():
                 "difficulty": difficulty,
                 "confidence": data["confidence"],
                 "previewMode": "experimental-notation",
-                "summary": "This preview renders a short drum-heavy section as real staff-based notation. It is an early notation experiment, not full-song transcription yet.",
+                "summary": "This is a page-style notation experiment focused on readability, system layout, and more realistic drum-sheet presentation. It is still not full-song audio transcription yet.",
                 "notationSections": data["notationSections"],
             }
         )
