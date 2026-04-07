@@ -5,35 +5,29 @@ from collections import defaultdict
 from xml.sax.saxutils import escape
 
 VALID_DIFFICULTIES = {"beginner", "intermediate", "pro"}
-DIVISIONS = 4
-DURATION_MAP = {"16th": 1, "eighth": 2, "quarter": 4}
-BACKUP_OCTAVE = 4
+DIVISIONS = 8
+DURATION_MAP = {"32nd": 1, "16th": 2, "eighth": 4, "quarter": 8}
 
 DRUM_MAP = {
     "kick": {"instrument": "P1-I36", "name": "Bass Drum", "step": "F", "octave": 4, "stem": "down", "voice": 2},
-    "snare": {"instrument": "P1-I39", "name": "Snare Drum", "step": "C", "octave": 5, "stem": "up", "voice": 1},
-    "ghost-snare": {"instrument": "P1-I39", "name": "Snare Drum", "step": "C", "octave": 5, "stem": "up", "voice": 1, "parentheses": True},
+    "snare": {"instrument": "P1-I39", "name": "Snare Drum", "step": "D", "octave": 5, "stem": "up", "voice": 1},
+    "ghost-snare": {"instrument": "P1-I39", "name": "Snare Drum", "step": "D", "octave": 5, "stem": "up", "voice": 1, "parentheses": True},
     "closed-hihat": {"instrument": "P1-I43", "name": "Closed Hi-Hat", "step": "G", "octave": 5, "stem": "up", "voice": 1, "notehead": "x"},
     "open-hihat": {"instrument": "P1-I43", "name": "Open Hi-Hat", "step": "G", "octave": 5, "stem": "up", "voice": 1, "notehead": "x", "open": True},
     "ride": {"instrument": "P1-I51", "name": "Ride Cymbal", "step": "A", "octave": 5, "stem": "up", "voice": 1, "notehead": "x"},
     "crash": {"instrument": "P1-I49", "name": "Crash Cymbal", "step": "A", "octave": 5, "stem": "up", "voice": 1, "notehead": "x"},
-    "high-tom": {"instrument": "P1-I48", "name": "High Tom", "step": "E", "octave": 5, "stem": "up", "voice": 1},
-    "mid-tom": {"instrument": "P1-I47", "name": "Mid Tom", "step": "D", "octave": 5, "stem": "up", "voice": 1},
+    "high-tom": {"instrument": "P1-I48", "name": "High Tom", "step": "F", "octave": 5, "stem": "up", "voice": 1},
+    "mid-tom": {"instrument": "P1-I47", "name": "Mid Tom", "step": "E", "octave": 5, "stem": "up", "voice": 1},
     "floor-tom": {"instrument": "P1-I41", "name": "Floor Tom", "step": "A", "octave": 4, "stem": "up", "voice": 1},
-    "hihat-foot": {"instrument": "P1-I44", "name": "Hi-Hat Foot", "step": "D", "octave": 4, "stem": "down", "voice": 2, "notehead": "x"},
 }
 
 INSTRUMENT_ORDER = [
-    "kick", "snare", "closed-hihat", "open-hihat", "ride", "crash", "high-tom", "mid-tom", "floor-tom", "hihat-foot"
+    "kick", "snare", "closed-hihat", "open-hihat", "ride", "crash", "high-tom", "mid-tom", "floor-tom"
 ]
 
 
-class Event(dict):
-    pass
-
-
 def event(at, drum, duration="eighth", accent=False):
-    return Event({"at": at, "drum": drum, "duration": duration, "accent": accent})
+    return {"at": at, "drum": drum, "duration": duration, "accent": accent}
 
 
 def beginner_measure_one():
@@ -41,13 +35,13 @@ def beginner_measure_one():
         "label": "Intro",
         "events": [
             event(0, "closed-hihat"), event(0, "kick", "quarter"),
-            event(2, "closed-hihat"),
-            event(4, "closed-hihat"), event(4, "snare", "quarter"),
-            event(6, "closed-hihat"),
-            event(8, "closed-hihat"), event(8, "kick", "quarter"),
-            event(10, "closed-hihat"),
-            event(12, "closed-hihat"), event(12, "snare", "quarter"),
-            event(14, "closed-hihat"),
+            event(4, "closed-hihat"),
+            event(8, "closed-hihat"), event(8, "snare", "quarter"),
+            event(12, "closed-hihat"),
+            event(16, "closed-hihat"), event(16, "kick", "quarter"),
+            event(20, "closed-hihat"),
+            event(24, "closed-hihat"), event(24, "snare", "quarter"),
+            event(28, "closed-hihat"),
         ],
     }
 
@@ -57,13 +51,13 @@ def beginner_measure_two():
         "label": "Verse",
         "events": [
             event(0, "crash", accent=True), event(0, "kick", "quarter"),
-            event(2, "closed-hihat"),
-            event(4, "closed-hihat"), event(4, "snare", "quarter"),
-            event(6, "closed-hihat"),
-            event(8, "closed-hihat"), event(8, "kick", "quarter"),
-            event(10, "closed-hihat"),
-            event(12, "closed-hihat"), event(12, "snare", "quarter"),
-            event(14, "open-hihat"),
+            event(4, "closed-hihat"),
+            event(8, "closed-hihat"), event(8, "snare", "quarter"),
+            event(12, "closed-hihat"),
+            event(16, "closed-hihat"), event(16, "kick", "quarter"),
+            event(20, "closed-hihat"),
+            event(24, "closed-hihat"), event(24, "snare", "quarter"),
+            event(28, "open-hihat"),
         ],
     }
 
@@ -73,13 +67,13 @@ def intermediate_measure_one():
         "label": "Verse",
         "events": [
             event(0, "crash", accent=True), event(0, "kick", "quarter"),
-            event(2, "closed-hihat"),
-            event(4, "closed-hihat"), event(4, "snare", "quarter", accent=True),
-            event(6, "closed-hihat"), event(7, "ghost-snare", "16th"),
-            event(8, "closed-hihat"), event(8, "kick", "quarter"),
-            event(10, "closed-hihat"), event(10, "kick", "eighth"),
-            event(12, "closed-hihat"), event(12, "snare", "quarter", accent=True),
-            event(14, "open-hihat"),
+            event(4, "closed-hihat"),
+            event(8, "closed-hihat"), event(8, "snare", "quarter", accent=True),
+            event(12, "closed-hihat"), event(14, "ghost-snare", "16th"),
+            event(16, "closed-hihat"), event(16, "kick", "quarter"),
+            event(20, "closed-hihat"), event(20, "kick", "eighth"),
+            event(24, "closed-hihat"), event(24, "snare", "quarter", accent=True),
+            event(28, "open-hihat"),
         ],
     }
 
@@ -89,15 +83,15 @@ def intermediate_measure_two():
         "label": "Fill / transition",
         "events": [
             event(0, "ride"), event(0, "kick", "quarter"),
-            event(2, "ride"),
-            event(4, "ride"), event(4, "snare", "quarter", accent=True),
-            event(6, "ride"),
-            event(8, "ride"), event(8, "kick", "quarter"),
-            event(10, "high-tom", "16th"),
-            event(11, "mid-tom", "16th"),
-            event(12, "floor-tom", "16th"),
-            event(13, "snare", "16th", accent=True),
-            event(14, "crash", accent=True), event(14, "kick", "quarter"),
+            event(4, "ride"),
+            event(8, "ride"), event(8, "snare", "quarter", accent=True),
+            event(12, "ride"),
+            event(16, "ride"), event(16, "kick", "quarter"),
+            event(20, "high-tom", "16th"),
+            event(22, "mid-tom", "16th"),
+            event(24, "floor-tom", "16th"),
+            event(26, "snare", "16th", accent=True),
+            event(28, "crash", accent=True), event(28, "kick", "quarter"),
         ],
     }
 
@@ -107,14 +101,14 @@ def pro_measure_one():
         "label": "Verse",
         "events": [
             event(0, "crash", accent=True), event(0, "kick", "quarter"),
-            event(2, "closed-hihat"),
-            event(4, "closed-hihat"), event(4, "snare", "quarter", accent=True),
-            event(5, "ghost-snare", "16th"),
-            event(6, "closed-hihat"), event(6, "kick", "eighth"),
-            event(8, "closed-hihat"), event(8, "kick", "quarter"),
-            event(10, "closed-hihat"), event(11, "ghost-snare", "16th"),
-            event(12, "closed-hihat"), event(12, "snare", "quarter", accent=True),
-            event(14, "open-hihat"), event(14, "kick", "quarter"),
+            event(4, "closed-hihat"),
+            event(8, "closed-hihat"), event(8, "snare", "quarter", accent=True),
+            event(10, "ghost-snare", "16th"),
+            event(12, "closed-hihat"), event(12, "kick", "eighth"),
+            event(16, "closed-hihat"), event(16, "kick", "quarter"),
+            event(20, "closed-hihat"), event(22, "ghost-snare", "16th"),
+            event(24, "closed-hihat"), event(24, "snare", "quarter", accent=True),
+            event(28, "open-hihat"), event(28, "kick", "quarter"),
         ],
     }
 
@@ -124,14 +118,14 @@ def pro_measure_two():
         "label": "Verse variation",
         "events": [
             event(0, "ride"), event(0, "kick", "quarter"),
-            event(2, "ride"), event(2, "kick", "eighth"),
-            event(4, "ride"), event(4, "snare", "quarter", accent=True),
-            event(5, "ghost-snare", "16th"),
-            event(6, "ride"),
-            event(8, "ride"), event(8, "kick", "quarter"),
-            event(10, "ride"), event(10, "kick", "eighth"),
-            event(12, "ride"), event(12, "snare", "quarter", accent=True),
-            event(14, "ride"), event(14, "kick", "quarter"),
+            event(4, "ride"), event(4, "kick", "eighth"),
+            event(8, "ride"), event(8, "snare", "quarter", accent=True),
+            event(10, "ghost-snare", "16th"),
+            event(12, "ride"),
+            event(16, "ride"), event(16, "kick", "quarter"),
+            event(20, "ride"), event(20, "kick", "eighth"),
+            event(24, "ride"), event(24, "snare", "quarter", accent=True),
+            event(28, "ride"), event(28, "kick", "quarter"),
         ],
     }
 
@@ -144,38 +138,55 @@ def build_measures(difficulty: str):
     return [pro_measure_one(), pro_measure_two()]
 
 
-def chord_xml(events_group):
-    ordered = sorted(events_group, key=lambda item: (DRUM_MAP[item["drum"]]["voice"], -DRUM_MAP[item["drum"]]["octave"]))
+def note_xml(event_data, chord=False):
+    drum = DRUM_MAP[event_data["drum"]]
+    duration_value = DURATION_MAP[event_data["duration"]]
+    xml = ["    <note>"]
+    if chord:
+        xml.append("      <chord/>")
+    xml.append("      <unpitched>")
+    xml.append(f"        <display-step>{drum['step']}</display-step>")
+    xml.append(f"        <display-octave>{drum['octave']}</display-octave>")
+    xml.append("      </unpitched>")
+    xml.append(f"      <duration>{duration_value}</duration>")
+    xml.append(f"      <instrument id=\"{drum['instrument']}\"/>")
+    xml.append(f"      <voice>{drum['voice']}</voice>")
+    xml.append(f"      <type>{event_data['duration']}</type>")
+    if drum.get("notehead"):
+        xml.append(f"      <notehead>{drum['notehead']}</notehead>")
+    xml.append(f"      <stem>{drum['stem']}</stem>")
+    xml.append("      <staff>1</staff>")
+    if event_data.get("accent") or drum.get("parentheses") or drum.get("open"):
+        xml.append("      <notations>")
+        if event_data.get("accent"):
+            xml.append("        <articulations><accent/></articulations>")
+        if drum.get("open"):
+            xml.append("        <technical><open-string/></technical>")
+        xml.append("      </notations>")
+    if drum.get("parentheses"):
+        xml.append("      <play><mute>straight</mute></play>")
+    xml.append("    </note>")
+    return "\n".join(xml)
+
+
+def grouped_note_xml(events_group):
+    upper = [e for e in events_group if DRUM_MAP[e["drum"]]["voice"] == 1]
+    lower = [e for e in events_group if DRUM_MAP[e["drum"]]["voice"] == 2]
+
     xml_parts = []
-    for index, event_data in enumerate(ordered):
-        drum = DRUM_MAP[event_data["drum"]]
-        duration_value = DURATION_MAP[event_data["duration"]]
-        xml = ["    <note>"]
-        if index > 0:
-            xml.append("      <chord/>")
-        xml.append("      <unpitched>")
-        xml.append(f"        <display-step>{drum['step']}</display-step>")
-        xml.append(f"        <display-octave>{drum['octave']}</display-octave>")
-        xml.append("      </unpitched>")
-        xml.append(f"      <duration>{duration_value}</duration>")
-        xml.append(f"      <instrument id=\"{drum['instrument']}\"/>")
-        xml.append(f"      <voice>{drum['voice']}</voice>")
-        xml.append(f"      <type>{event_data['duration']}</type>")
-        if drum.get("notehead"):
-            xml.append(f"      <notehead>{drum['notehead']}</notehead>")
-        xml.append(f"      <stem>{drum['stem']}</stem>")
-        xml.append("      <staff>1</staff>")
-        if event_data.get("accent") or drum.get("parentheses") or drum.get("open"):
-            xml.append("      <notations>")
-            if event_data.get("accent"):
-                xml.append("        <articulations><accent/></articulations>")
-            if drum.get("open"):
-                xml.append("        <technical><open-string/></technical>")
-            xml.append("      </notations>")
-        if drum.get("parentheses"):
-            xml.append("      <play><mute>straight</mute></play>")
-        xml.append("    </note>")
-        xml_parts.append("\n".join(xml))
+
+    if upper:
+        ordered_upper = sorted(upper, key=lambda item: -DRUM_MAP[item["drum"]]["octave"])
+        xml_parts.append(note_xml(ordered_upper[0], chord=False))
+        for extra in ordered_upper[1:]:
+            xml_parts.append(note_xml(extra, chord=True))
+
+    if lower:
+        ordered_lower = sorted(lower, key=lambda item: DRUM_MAP[item["drum"]]["octave"])
+        xml_parts.append(note_xml(ordered_lower[0], chord=False if not upper else True))
+        for extra in ordered_lower[1:]:
+            xml_parts.append(note_xml(extra, chord=True))
+
     return xml_parts
 
 
@@ -189,6 +200,9 @@ def build_musicxml(title: str, difficulty: str):
             grouped[event_data["at"]].append(event_data)
 
         measure_xml.append(f'  <measure number="{index}">')
+        measure_xml.append("    <print new-system=\"yes\">")
+        measure_xml.append("      <system-layout><system-distance>95</system-distance></system-layout>")
+        measure_xml.append("    </print>")
         if index == 1:
             measure_xml.append("    <attributes>")
             measure_xml.append(f"      <divisions>{DIVISIONS}</divisions>")
@@ -203,11 +217,13 @@ def build_musicxml(title: str, difficulty: str):
             measure_xml.append("    </attributes>")
 
         measure_xml.append("    <direction placement=\"above\">")
-        measure_xml.append(f"      <direction-type><words relative-y=\"12\">{escape(measure['label'])}</words></direction-type>")
+        measure_xml.append("      <direction-type>")
+        measure_xml.append(f"        <rehearsal>{escape(measure['label'])}</rehearsal>")
+        measure_xml.append("      </direction-type>")
         measure_xml.append("    </direction>")
 
         for beat in sorted(grouped.keys()):
-            measure_xml.extend(chord_xml(grouped[beat]))
+            measure_xml.extend(grouped_note_xml(grouped[beat]))
 
         measure_xml.append("  </measure>")
 
@@ -267,9 +283,9 @@ def main():
             {
                 "title": f"Experimental notation for {title}",
                 "difficulty": difficulty,
-                "confidence": 0.68 if difficulty == "beginner" else 0.74 if difficulty == "intermediate" else 0.79,
+                "confidence": 0.69 if difficulty == "beginner" else 0.75 if difficulty == "intermediate" else 0.8,
                 "previewMode": "musicxml",
-                "summary": "This pass groups simultaneous hits into the same rhythmic moment so hi-hat/ride sits on top of the groove while snare and kick align underneath as one coordinated pattern.",
+                "summary": "This pass improves groove engraving: cymbal notes stay as the connected top voice, kick sits lower, snare sits between them, and section labels are promoted out of the note area.",
                 "musicXml": music_xml,
             }
         )
