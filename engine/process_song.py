@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import sys
 from collections import defaultdict
 from xml.sax.saxutils import escape
@@ -24,6 +25,17 @@ DRUM_MAP = {
 INSTRUMENT_ORDER = [
     "kick", "snare", "closed-hihat", "open-hihat", "ride", "crash", "high-tom", "mid-tom", "floor-tom"
 ]
+
+
+def clean_title(file_path: str) -> str:
+    base = os.path.basename(file_path)
+    name, _ext = os.path.splitext(base)
+    name = re.sub(r"^\d+-", "", name)
+    name = name.replace("---", " - ")
+    name = name.replace("_", " ")
+    name = name.replace("-Lyrics", "")
+    name = re.sub(r"\s+", " ", name).strip(" -_")
+    return name or "Experimental Drum Preview"
 
 
 def event(at, drum, duration="eighth", accent=False):
@@ -190,7 +202,7 @@ def grouped_note_xml(events_group):
     return xml_parts
 
 
-def build_musicxml(title: str, difficulty: str):
+def build_musicxml(score_title: str, difficulty: str):
     measures = build_measures(difficulty)
     measure_xml = []
 
@@ -200,10 +212,10 @@ def build_musicxml(title: str, difficulty: str):
             grouped[event_data["at"]].append(event_data)
 
         measure_xml.append(f'  <measure number="{index}">')
-        measure_xml.append("    <print new-system=\"yes\">")
-        measure_xml.append("      <system-layout><system-distance>95</system-distance></system-layout>")
-        measure_xml.append("    </print>")
         if index == 1:
+            measure_xml.append("    <print new-system=\"yes\">")
+            measure_xml.append("      <system-layout><system-distance>95</system-distance><top-system-distance>120</top-system-distance></system-layout>")
+            measure_xml.append("    </print>")
             measure_xml.append("    <attributes>")
             measure_xml.append(f"      <divisions>{DIVISIONS}</divisions>")
             measure_xml.append("      <key><fifths>0</fifths></key>")
@@ -212,13 +224,16 @@ def build_musicxml(title: str, difficulty: str):
             measure_xml.append("      <clef number=\"1\"><sign>percussion</sign><line>2</line></clef>")
             measure_xml.append("    </attributes>")
         else:
+            measure_xml.append("    <print new-system=\"yes\">")
+            measure_xml.append("      <system-layout><system-distance>95</system-distance></system-layout>")
+            measure_xml.append("    </print>")
             measure_xml.append("    <attributes>")
             measure_xml.append("      <time><beats>4</beats><beat-type>4</beat-type></time>")
             measure_xml.append("    </attributes>")
 
         measure_xml.append("    <direction placement=\"above\">")
         measure_xml.append("      <direction-type>")
-        measure_xml.append(f"        <rehearsal>{escape(measure['label'])}</rehearsal>")
+        measure_xml.append(f"        <words default-y=\"55\" font-weight=\"bold\">{escape(measure['label'])}</words>")
         measure_xml.append("      </direction-type>")
         measure_xml.append("    </direction>")
 
@@ -244,7 +259,7 @@ def build_musicxml(title: str, difficulty: str):
   "http://www.musicxml.org/dtds/partwise.dtd">
 <score-partwise version="3.1">
   <work>
-    <work-title>{escape(title)}</work-title>
+    <work-title>{escape(score_title)}</work-title>
   </work>
   <identification>
     <creator type="arranger">Drumsheet AI experimental engraving</creator>
@@ -275,17 +290,17 @@ def main():
         print(json.dumps({"error": "Invalid difficulty"}))
         sys.exit(1)
 
-    title = os.path.basename(file_path)
-    music_xml = build_musicxml(title, difficulty)
+    clean_score_title = clean_title(file_path)
+    music_xml = build_musicxml(clean_score_title, difficulty)
 
     print(
         json.dumps(
             {
-                "title": f"Experimental notation for {title}",
+                "title": f"Experimental notation for {clean_score_title}",
                 "difficulty": difficulty,
-                "confidence": 0.69 if difficulty == "beginner" else 0.75 if difficulty == "intermediate" else 0.8,
+                "confidence": 0.7 if difficulty == "beginner" else 0.76 if difficulty == "intermediate" else 0.81,
                 "previewMode": "musicxml",
-                "summary": "This pass improves groove engraving: cymbal notes stay as the connected top voice, kick sits lower, snare sits between them, and section labels are promoted out of the note area.",
+                "summary": "This pass cleans the engraved score metadata: no raw timestamp filename in the title, and section labels are moved higher so they stop colliding with the cymbal line.",
                 "musicXml": music_xml,
             }
         )
