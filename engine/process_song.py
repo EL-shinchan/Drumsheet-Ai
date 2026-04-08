@@ -19,9 +19,99 @@ def clean_title(file_path: str) -> str:
     return name or "Experimental Drum Preview"
 
 
-def build_musicxml(score_title: str) -> str:
-    # Reset pass: one single reference-style rock groove bar.
-    # Goal: lock placement before adding complexity again.
+def groove_for_difficulty(difficulty: str):
+    if difficulty == "beginner":
+        return [
+            ("hh", 0), ("bd", 0),
+            ("hh", 4),
+            ("hh", 8), ("sn", 8),
+            ("hh", 12),
+            ("hh", 16), ("bd", 16),
+            ("hh", 20),
+            ("hh", 24), ("sn", 24),
+            ("hh", 28),
+        ]
+    if difficulty == "intermediate":
+        return [
+            ("cr", 0), ("bd", 0),
+            ("hh", 4),
+            ("hh", 8), ("sn", 8),
+            ("hh", 12),
+            ("hh", 16), ("bd", 16),
+            ("hh", 20), ("bd", 20),
+            ("hh", 24), ("sn", 24),
+            ("oh", 28),
+        ]
+    return [
+        ("cr", 0), ("bd", 0),
+        ("hh", 4),
+        ("hh", 8), ("sn", 8),
+        ("gh", 10),
+        ("hh", 12), ("bd", 12),
+        ("hh", 16), ("bd", 16),
+        ("gh", 22),
+        ("hh", 24), ("sn", 24),
+        ("oh", 28), ("bd", 28),
+    ]
+
+
+def note_xml(kind: str, chord: bool = False) -> str:
+    if kind == "hh":
+        step, octave, inst, typ, notehead, stem, duration = "G", 5, "P1-I43", "eighth", "x", "up", 4
+        extra = "      <notations><technical><stopped/></technical></notations>\n"
+    elif kind == "oh":
+        step, octave, inst, typ, notehead, stem, duration = "G", 5, "P1-I43", "eighth", "x", "up", 4
+        extra = "      <notations><technical><open-string/></technical></notations>\n"
+    elif kind == "cr":
+        step, octave, inst, typ, notehead, stem, duration = "A", 5, "P1-I49", "eighth", "x", "up", 4
+        extra = "      <notations><articulations><accent/></articulations></notations>\n"
+    elif kind == "sn":
+        step, octave, inst, typ, notehead, stem, duration = "C", 5, "P1-I39", "quarter", None, "up", 8
+        extra = ""
+    elif kind == "gh":
+        step, octave, inst, typ, notehead, stem, duration = "C", 5, "P1-I39", "16th", None, "up", 2
+        extra = "      <notehead parentheses=\"yes\">normal</notehead>\n"
+    elif kind == "bd":
+        step, octave, inst, typ, notehead, stem, duration = "F", 4, "P1-I36", "quarter", None, "down", 8
+        extra = ""
+    else:
+        raise ValueError(kind)
+
+    parts = ["    <note>"]
+    if chord:
+        parts.append("      <chord/>")
+    parts.extend([
+        "      <unpitched>",
+        f"        <display-step>{step}</display-step>",
+        f"        <display-octave>{octave}</display-octave>",
+        "      </unpitched>",
+        f"      <duration>{duration}</duration>",
+        f"      <instrument id=\"{inst}\"/>",
+        f"      <voice>{'2' if kind == 'bd' else '1'}</voice>",
+        f"      <type>{typ}</type>",
+    ])
+    if notehead:
+        parts.append(f"      <notehead>{notehead}</notehead>")
+    parts.append(f"      <stem>{stem}</stem>")
+    parts.append("      <staff>1</staff>")
+    if extra:
+        parts.append(extra.rstrip("\n"))
+    parts.append("    </note>")
+    return "\n".join(parts)
+
+
+def build_musicxml(score_title: str, difficulty: str) -> str:
+    events = groove_for_difficulty(difficulty)
+    grouped = {}
+    for kind, pos in events:
+        grouped.setdefault(pos, []).append(kind)
+
+    notes_xml = []
+    for pos in sorted(grouped):
+        order = sorted(grouped[pos], key=lambda k: (k == "bd", {"cr": 0, "hh": 1, "oh": 1, "gh": 2, "sn": 3, "bd": 4}[k]))
+        for i, kind in enumerate(order):
+            notes_xml.append(note_xml(kind, chord=i > 0))
+
     return f'''<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE score-partwise PUBLIC
   "-//Recordare//DTD MusicXML 3.1 Partwise//EN"
@@ -31,7 +121,7 @@ def build_musicxml(score_title: str) -> str:
     <work-title>{escape(score_title)}</work-title>
   </work>
   <identification>
-    <creator type="arranger">Drumsheet AI notation reset baseline</creator>
+    <creator type="arranger">Drumsheet AI notation baseline</creator>
   </identification>
   <part-list>
     <score-part id="P1">
@@ -39,6 +129,7 @@ def build_musicxml(score_title: str) -> str:
       <score-instrument id="P1-I36"><instrument-name>Bass Drum</instrument-name></score-instrument>
       <score-instrument id="P1-I39"><instrument-name>Snare Drum</instrument-name></score-instrument>
       <score-instrument id="P1-I43"><instrument-name>Closed Hi-Hat</instrument-name></score-instrument>
+      <score-instrument id="P1-I49"><instrument-name>Crash Cymbal</instrument-name></score-instrument>
     </score-part>
   </part-list>
   <part id="P1">
@@ -50,171 +141,7 @@ def build_musicxml(score_title: str) -> str:
         <staves>1</staves>
         <clef number="1"><sign>percussion</sign><line>2</line></clef>
       </attributes>
-
-      <note>
-        <unpitched>
-          <display-step>G</display-step>
-          <display-octave>5</display-octave>
-        </unpitched>
-        <duration>4</duration>
-        <instrument id="P1-I43"/>
-        <voice>1</voice>
-        <type>eighth</type>
-        <notehead>x</notehead>
-        <stem>up</stem>
-        <staff>1</staff>
-      </note>
-      <note>
-        <chord/>
-        <unpitched>
-          <display-step>F</display-step>
-          <display-octave>4</display-octave>
-        </unpitched>
-        <duration>8</duration>
-        <instrument id="P1-I36"/>
-        <voice>2</voice>
-        <type>quarter</type>
-        <stem>down</stem>
-        <staff>1</staff>
-      </note>
-
-      <note>
-        <unpitched>
-          <display-step>G</display-step>
-          <display-octave>5</display-octave>
-        </unpitched>
-        <duration>4</duration>
-        <instrument id="P1-I43"/>
-        <voice>1</voice>
-        <type>eighth</type>
-        <notehead>x</notehead>
-        <stem>up</stem>
-        <staff>1</staff>
-      </note>
-
-      <note>
-        <unpitched>
-          <display-step>G</display-step>
-          <display-octave>5</display-octave>
-        </unpitched>
-        <duration>4</duration>
-        <instrument id="P1-I43"/>
-        <voice>1</voice>
-        <type>eighth</type>
-        <notehead>x</notehead>
-        <stem>up</stem>
-        <staff>1</staff>
-      </note>
-      <note>
-        <chord/>
-        <unpitched>
-          <display-step>C</display-step>
-          <display-octave>5</display-octave>
-        </unpitched>
-        <duration>8</duration>
-        <instrument id="P1-I39"/>
-        <voice>1</voice>
-        <type>quarter</type>
-        <stem>up</stem>
-        <staff>1</staff>
-      </note>
-
-      <note>
-        <unpitched>
-          <display-step>G</display-step>
-          <display-octave>5</display-octave>
-        </unpitched>
-        <duration>4</duration>
-        <instrument id="P1-I43"/>
-        <voice>1</voice>
-        <type>eighth</type>
-        <notehead>x</notehead>
-        <stem>up</stem>
-        <staff>1</staff>
-      </note>
-
-      <note>
-        <unpitched>
-          <display-step>G</display-step>
-          <display-octave>5</display-octave>
-        </unpitched>
-        <duration>4</duration>
-        <instrument id="P1-I43"/>
-        <voice>1</voice>
-        <type>eighth</type>
-        <notehead>x</notehead>
-        <stem>up</stem>
-        <staff>1</staff>
-      </note>
-      <note>
-        <chord/>
-        <unpitched>
-          <display-step>F</display-step>
-          <display-octave>4</display-octave>
-        </unpitched>
-        <duration>8</duration>
-        <instrument id="P1-I36"/>
-        <voice>2</voice>
-        <type>quarter</type>
-        <stem>down</stem>
-        <staff>1</staff>
-      </note>
-
-      <note>
-        <unpitched>
-          <display-step>G</display-step>
-          <display-octave>5</display-octave>
-        </unpitched>
-        <duration>4</duration>
-        <instrument id="P1-I43"/>
-        <voice>1</voice>
-        <type>eighth</type>
-        <notehead>x</notehead>
-        <stem>up</stem>
-        <staff>1</staff>
-      </note>
-
-      <note>
-        <unpitched>
-          <display-step>G</display-step>
-          <display-octave>5</display-octave>
-        </unpitched>
-        <duration>4</duration>
-        <instrument id="P1-I43"/>
-        <voice>1</voice>
-        <type>eighth</type>
-        <notehead>x</notehead>
-        <stem>up</stem>
-        <staff>1</staff>
-      </note>
-      <note>
-        <chord/>
-        <unpitched>
-          <display-step>C</display-step>
-          <display-octave>5</display-octave>
-        </unpitched>
-        <duration>8</duration>
-        <instrument id="P1-I39"/>
-        <voice>1</voice>
-        <type>quarter</type>
-        <stem>up</stem>
-        <staff>1</staff>
-      </note>
-
-      <note>
-        <unpitched>
-          <display-step>G</display-step>
-          <display-octave>5</display-octave>
-        </unpitched>
-        <duration>4</duration>
-        <instrument id="P1-I43"/>
-        <voice>1</voice>
-        <type>eighth</type>
-        <notehead>x</notehead>
-        <stem>up</stem>
-        <staff>1</staff>
-      </note>
-
+{chr(10).join(notes_xml)}
       <barline location="right"><bar-style>light-heavy</bar-style></barline>
     </measure>
   </part>
@@ -229,26 +156,26 @@ def main():
 
     file_path = sys.argv[1]
     difficulty = sys.argv[2].lower()
-
     if difficulty not in VALID_DIFFICULTIES:
         print(json.dumps({"error": "Invalid difficulty"}))
         sys.exit(1)
 
     clean_score_title = clean_title(file_path)
-    music_xml = build_musicxml(clean_score_title)
+    music_xml = build_musicxml(clean_score_title, difficulty)
+    summary = {
+        "beginner": "Beginner: straight rock groove with kick on 1 and 3, snare on 2 and 4, closed hats.",
+        "intermediate": "Intermediate: same groove base, plus entry crash, extra kick movement, and an open-hat release.",
+        "pro": "Pro: denser one-bar groove with extra kick notes and subtle ghost-note flavor while keeping the same correct placement.",
+    }[difficulty]
 
-    print(
-        json.dumps(
-            {
-                "title": f"Notation reset baseline for {clean_score_title}",
-                "difficulty": difficulty,
-                "confidence": 0.9,
-                "previewMode": "musicxml",
-                "summary": "Reset pass: one single 4/4 rock groove bar only. No extra sections, fills, or clutter. The goal is to lock hi-hat/snare/kick placement before rebuilding complexity.",
-                "musicXml": music_xml,
-            }
-        )
-    )
+    print(json.dumps({
+        "title": f"Notation baseline for {clean_score_title}",
+        "difficulty": difficulty,
+        "confidence": 0.9,
+        "previewMode": "musicxml",
+        "summary": summary,
+        "musicXml": music_xml,
+    }))
 
 
 if __name__ == "__main__":
