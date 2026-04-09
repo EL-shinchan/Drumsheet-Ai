@@ -8,6 +8,12 @@ VALID_DIFFICULTIES = {"beginner", "intermediate", "pro"}
 DIVISIONS = 8
 
 
+HI_HAT_SYMBOLS = {
+    "hh": "+",
+    "oh": "o",
+}
+
+
 def clean_title(file_path: str) -> str:
     base = os.path.basename(file_path)
     name, _ext = os.path.splitext(base)
@@ -36,32 +42,52 @@ def groove_for_difficulty(difficulty: str):
             ("cr", 0), ("bd", 0),
             ("hh", 4),
             ("hh", 8), ("sn", 8),
-            ("hh", 12),
+            ("hh", 10),
+            ("hh", 12), ("bd", 12),
             ("hh", 16), ("bd", 16),
-            ("hh", 20), ("bd", 20),
+            ("hh", 20),
             ("hh", 24), ("sn", 24),
-            ("oh", 28),
+            ("oh", 28), ("bd", 28),
         ]
     return [
         ("cr", 0), ("bd", 0),
+        ("hh", 2),
         ("hh", 4),
+        ("gh", 6),
         ("hh", 8), ("sn", 8),
-        ("gh", 10),
+        ("hh", 10),
         ("hh", 12), ("bd", 12),
+        ("hh", 14),
         ("hh", 16), ("bd", 16),
-        ("gh", 22),
+        ("gh", 18),
+        ("hh", 20), ("bd", 20),
+        ("hh", 22),
         ("hh", 24), ("sn", 24),
         ("oh", 28), ("bd", 28),
+        ("hh", 30),
     ]
+
+
+def hi_hat_direction_xml(kind: str) -> str:
+    symbol = HI_HAT_SYMBOLS.get(kind)
+    if not symbol:
+        return ""
+
+    return f'''    <direction placement="above">
+      <direction-type>
+        <words relative-y="18" font-size="12" font-weight="bold">{symbol}</words>
+      </direction-type>
+      <staff>1</staff>
+    </direction>'''
 
 
 def note_xml(kind: str, chord: bool = False) -> str:
     if kind == "hh":
         step, octave, inst, typ, notehead, stem, duration = "G", 5, "P1-I43", "eighth", "x", "up", 4
-        extra = "      <notations><technical><stopped/></technical></notations>\n"
+        extra = ""
     elif kind == "oh":
         step, octave, inst, typ, notehead, stem, duration = "G", 5, "P1-I43", "eighth", "x", "up", 4
-        extra = "      <notations><technical><open-string/></technical></notations>\n"
+        extra = ""
     elif kind == "cr":
         step, octave, inst, typ, notehead, stem, duration = "A", 5, "P1-I49", "eighth", "x", "up", 4
         extra = "      <notations><articulations><accent/></articulations></notations>\n"
@@ -108,7 +134,12 @@ def build_musicxml(score_title: str, difficulty: str) -> str:
 
     notes_xml = []
     for pos in sorted(grouped):
-        order = sorted(grouped[pos], key=lambda k: (k == "bd", {"cr": 0, "hh": 1, "oh": 1, "gh": 2, "sn": 3, "bd": 4}[k]))
+        kinds = grouped[pos]
+        hi_hat_kind = next((kind for kind in kinds if kind in HI_HAT_SYMBOLS), None)
+        if hi_hat_kind:
+            notes_xml.append(hi_hat_direction_xml(hi_hat_kind))
+
+        order = sorted(kinds, key=lambda k: (k == "bd", {"cr": 0, "hh": 1, "oh": 1, "gh": 2, "sn": 3, "bd": 4}[k]))
         for i, kind in enumerate(order):
             notes_xml.append(note_xml(kind, chord=i > 0))
 
@@ -163,9 +194,9 @@ def main():
     clean_score_title = clean_title(file_path)
     music_xml = build_musicxml(clean_score_title, difficulty)
     summary = {
-        "beginner": "Beginner: straight rock groove with kick on 1 and 3, snare on 2 and 4, closed hats.",
-        "intermediate": "Intermediate: same groove base, plus entry crash, extra kick movement, and an open-hat release.",
-        "pro": "Pro: denser one-bar groove with extra kick notes and subtle ghost-note flavor while keeping the same correct placement.",
+        "beginner": "Beginner: straight eighth-note hats with kick on 1 and 3, snare on 2 and 4, and a stable no-surprises groove.",
+        "intermediate": "Intermediate: keeps the same core backbeat but adds a crash entry, extra kick push, tighter hat motion, and an open-hat release.",
+        "pro": "Pro: much denser one-bar groove with offbeat hats, ghost-note color, added kick syncopation, crash entry, and an open-hat exit while preserving the same core placement.",
     }[difficulty]
 
     print(json.dumps({
