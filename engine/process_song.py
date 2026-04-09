@@ -1,11 +1,24 @@
 import json
+import math
 import os
 import re
+import subprocess
 import sys
+import tempfile
+import wave
+from dataclasses import dataclass
 from xml.sax.saxutils import escape
+
+import numpy as np
 
 VALID_DIFFICULTIES = {"beginner", "intermediate", "pro"}
 DIVISIONS = 8
+SAMPLE_RATE = 22050
+FRAME_SIZE = 1024
+HOP_SIZE = 256
+QUANTIZATION_STEPS_PER_BAR = 32
+BARS_PER_PREVIEW = 2
+TOTAL_STEPS = QUANTIZATION_STEPS_PER_BAR * BARS_PER_PREVIEW
 
 HI_HAT_SYMBOLS = {
     "hh": "+",
@@ -13,6 +26,16 @@ HI_HAT_SYMBOLS = {
 }
 
 NOTE_PRIORITY = {"cr": 0, "hh": 1, "oh": 1, "gh": 2, "sn": 3, "bd": 4}
+
+
+@dataclass
+class AnalysisEvent:
+    time: float
+    kind: str
+    strength: float
+    low_ratio: float
+    mid_ratio: float
+    high_ratio: float
 
 
 def clean_title(file_path: str) -> str:
@@ -26,90 +49,281 @@ def clean_title(file_path: str) -> str:
     return name or "Experimental Drum Preview"
 
 
-def phrase_for_difficulty(difficulty: str):
-    if difficulty == "beginner":
-        return [
-            [
-                ("hh", 0), ("bd", 0),
-                ("hh", 4),
-                ("hh", 8), ("sn", 8),
-                ("hh", 12),
-                ("hh", 16), ("bd", 16),
-                ("hh", 20),
-                ("hh", 24), ("sn", 24),
-                ("hh", 28),
-            ],
-            [
-                ("hh", 0), ("bd", 0),
-                ("hh", 4),
-                ("hh", 8), ("sn", 8),
-                ("hh", 12), ("bd", 12),
-                ("hh", 16),
-                ("hh", 20),
-                ("hh", 24), ("sn", 24),
-                ("hh", 28),
-            ],
-        ]
-    if difficulty == "intermediate":
-        return [
-            [
-                ("cr", 0), ("bd", 0),
-                ("hh", 4),
-                ("hh", 8), ("sn", 8),
-                ("hh", 10),
-                ("hh", 12), ("bd", 12),
-                ("hh", 16), ("bd", 16),
-                ("hh", 20),
-                ("hh", 24), ("sn", 24),
-                ("oh", 28), ("bd", 28),
-            ],
-            [
-                ("hh", 0), ("bd", 0),
-                ("hh", 4), ("bd", 4),
-                ("hh", 8), ("sn", 8),
-                ("hh", 12),
-                ("hh", 16), ("bd", 16),
-                ("hh", 20), ("bd", 20),
-                ("hh", 24), ("sn", 24),
-                ("oh", 28),
-            ],
-        ]
-    return [
-        [
-            ("cr", 0), ("bd", 0),
-            ("hh", 2),
-            ("hh", 4),
-            ("gh", 6),
-            ("hh", 8), ("sn", 8),
-            ("hh", 10),
-            ("hh", 12), ("bd", 12),
-            ("hh", 14),
-            ("hh", 16), ("bd", 16),
-            ("gh", 18),
-            ("hh", 20), ("bd", 20),
-            ("hh", 22),
-            ("hh", 24), ("sn", 24),
-            ("oh", 28), ("bd", 28),
-            ("hh", 30),
-        ],
-        [
-            ("hh", 0), ("bd", 0),
-            ("gh", 2),
-            ("hh", 4),
-            ("hh", 6), ("bd", 6),
-            ("hh", 8), ("sn", 8),
-            ("hh", 10),
-            ("hh", 12), ("bd", 12),
-            ("gh", 14),
-            ("hh", 16),
-            ("hh", 18), ("bd", 18),
-            ("hh", 20),
-            ("hh", 22), ("bd", 22),
-            ("hh", 24), ("sn", 24),
-            ("oh", 28), ("bd", 28),
-            ("cr", 30),
-        ],
+def decode_audio_to_wav(input_path: str) -> str:
+    temp_file = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+    temp_file.close()
+    command = [
+        "ffmpeg",
+        "-y",
+        "-i",
+        input_path,
+        "-ac",
+        "1",
+        "-ar",
+        str(SAMPLE_RATE),
+        "-f",
+        "wav",
+        temp_file.name,
     ]
+    result = subprocess.run(command, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr.strip() or "ffmpeg failed to decode audio")
+    return temp_file.name
+
+
+def load_wav_mono(path: str) -> np.ndarray:
+    with wave.open(path, "rb") as wav_file:
+        channels = wav_file.getnchannels()
+        sample_width = wav_file.getsampwidth()
+        frame_rate = wav_file.getframerate()
+        frame_count = wav_file.getnframes()
+        raw = wav_file.readframes(frame_count)
+
+    if sample_width != 2:
+        raise RuntimeError("Expected 16-bit PCM WAV from ffmpeg decode")
+    if frame_rate != SAMPLE_RATE:
+        raise RuntimeError(f"Expected sample rate {SAMPLE_RATE}, got {frame_rate}")
+
+    audio = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
+    if channels > 1:
+        audio = audio.reshape(-1, channels).mean(axis=1)
+    if audio.size == 0:
+        raise RuntimeError("Decoded audio is empty")
+
+    peak = float(np.max(np.abs(audio)))
+    if peak > 0:
+        audio = audio / peak
+    return audio
+
+
+def frame_audio(audio: np.ndarray, frame_size: int, hop_size: int) -> np.ndarray:
+    if len(audio) < frame_size:
+        padded = np.pad(audio, (0, frame_size - len(audio)))
+        return padded[np.newaxis, :]
+
+    frame_count = 1 + (len(audio) - frame_size) // hop_size
+    strides = (audio.strides[0] * hop_size, audio.strides[0])
+    shape = (frame_count, frame_size)
+    frames = np.lib.stride_tricks.as_strided(audio, shape=shape, strides=strides)
+    return np.array(frames, copy=True)
+
+
+def compute_onset_envelope(audio: np.ndarray):
+    frames = frame_audio(audio, FRAME_SIZE, HOP_SIZE)
+    window = np.hanning(FRAME_SIZE)
+    spectrum = np.abs(np.fft.rfft(frames * window, axis=1))
+    freqs = np.fft.rfftfreq(FRAME_SIZE, d=1.0 / SAMPLE_RATE)
+
+    low_band = spectrum[:, freqs < 180].sum(axis=1)
+    mid_band = spectrum[:, (freqs >= 180) & (freqs < 2000)].sum(axis=1)
+    high_band = spectrum[:, freqs >= 2000].sum(axis=1)
+    total_energy = spectrum.sum(axis=1) + 1e-9
+
+    flux = np.maximum(0.0, np.diff(total_energy, prepend=total_energy[:1]))
+    smoothed = np.convolve(flux, np.ones(4) / 4, mode="same")
+    times = (np.arange(len(smoothed)) * HOP_SIZE) / SAMPLE_RATE
+    return times, smoothed, low_band, mid_band, high_band, total_energy
+
+
+def estimate_tempo(onset_envelope: np.ndarray) -> float:
+    if onset_envelope.size < 8 or float(onset_envelope.max()) <= 0:
+        return 120.0
+
+    envelope = onset_envelope - float(onset_envelope.mean())
+    autocorr = np.correlate(envelope, envelope, mode="full")
+    autocorr = autocorr[autocorr.size // 2 :]
+
+    min_bpm = 70.0
+    max_bpm = 190.0
+    min_lag = max(1, int((60.0 / max_bpm) * SAMPLE_RATE / HOP_SIZE))
+    max_lag = min(len(autocorr) - 1, int((60.0 / min_bpm) * SAMPLE_RATE / HOP_SIZE))
+    if max_lag <= min_lag:
+        return 120.0
+
+    lag = int(np.argmax(autocorr[min_lag : max_lag + 1]) + min_lag)
+    bpm = 60.0 * SAMPLE_RATE / (lag * HOP_SIZE)
+    while bpm < 80:
+        bpm *= 2
+    while bpm > 180:
+        bpm /= 2
+    return float(max(80.0, min(180.0, bpm)))
+
+
+def classify_event(low_ratio: float, mid_ratio: float, high_ratio: float) -> str | None:
+    if low_ratio > 0.52 and low_ratio >= mid_ratio:
+        return "bd"
+    if high_ratio > 0.34 and high_ratio >= low_ratio and high_ratio >= mid_ratio * 0.75:
+        return "hh"
+    if mid_ratio > 0.36:
+        return "sn"
+    if low_ratio > 0.40:
+        return "bd"
+    if high_ratio > 0.26:
+        return "hh"
+    if mid_ratio > 0.28:
+        return "sn"
+    return None
+
+
+def detect_events(audio: np.ndarray):
+    times, onset_env, low_band, mid_band, high_band, total_energy = compute_onset_envelope(audio)
+    threshold = float(np.percentile(onset_env, 85)) if onset_env.size else 0.0
+    if threshold <= 0:
+        threshold = float(onset_env.max()) * 0.5 if onset_env.size else 0.0
+
+    events: list[AnalysisEvent] = []
+    for i in range(1, len(onset_env) - 1):
+        value = float(onset_env[i])
+        if value < threshold:
+            continue
+        if value < onset_env[i - 1] or value < onset_env[i + 1]:
+            continue
+
+        total = float(total_energy[i]) + 1e-9
+        low_ratio = float(low_band[i] / total)
+        mid_ratio = float(mid_band[i] / total)
+        high_ratio = float(high_band[i] / total)
+        kind = classify_event(low_ratio, mid_ratio, high_ratio)
+        if not kind:
+            continue
+
+        if events and (times[i] - events[-1].time) < 0.045:
+            if value > events[-1].strength:
+                events[-1] = AnalysisEvent(times[i], kind, value, low_ratio, mid_ratio, high_ratio)
+            continue
+
+        events.append(AnalysisEvent(times[i], kind, value, low_ratio, mid_ratio, high_ratio))
+
+    return events, onset_env
+
+
+def choose_preview_window(events: list[AnalysisEvent], bpm: float, audio_duration: float) -> tuple[float, float]:
+    beat_duration = 60.0 / bpm
+    bar_duration = beat_duration * 4.0
+    phrase_duration = bar_duration * BARS_PER_PREVIEW
+
+    if audio_duration <= phrase_duration + 0.5:
+        return 0.0, min(audio_duration, phrase_duration)
+
+    if not events:
+        return 0.0, phrase_duration
+
+    best_start = 0.0
+    best_score = -1.0
+    latest_start = max(0.0, audio_duration - phrase_duration)
+    step = beat_duration / 2.0
+    cursor = 0.0
+    while cursor <= latest_start:
+        end = cursor + phrase_duration
+        score = 0.0
+        for event in events:
+            if cursor <= event.time < end:
+                score += event.strength
+                if event.kind == "sn":
+                    score += 0.15
+                elif event.kind == "bd":
+                    score += 0.1
+        if score > best_score:
+            best_score = score
+            best_start = cursor
+        cursor += step
+
+    return best_start, min(audio_duration, best_start + phrase_duration)
+
+
+def quantize_events(events: list[AnalysisEvent], bpm: float, window_start: float, difficulty: str):
+    beat_duration = 60.0 / bpm
+    step_duration = beat_duration / 8.0
+    window_events = [event for event in events if window_start <= event.time < window_start + beat_duration * 8]
+
+    grouped: dict[int, list[AnalysisEvent]] = {}
+    for event in window_events:
+        step = int(round((event.time - window_start) / step_duration))
+        step = max(0, min(TOTAL_STEPS - 1, step))
+        grouped.setdefault(step, []).append(event)
+
+    difficulty_limits = {
+        "beginner": {"bd": 4, "sn": 4, "hh": 10},
+        "intermediate": {"bd": 6, "sn": 4, "hh": 14},
+        "pro": {"bd": 8, "sn": 6, "hh": 22},
+    }[difficulty]
+
+    accepted = []
+    counts = {"bd": 0, "sn": 0, "hh": 0}
+
+    for step in sorted(grouped):
+        bucket = sorted(grouped[step], key=lambda event: event.strength, reverse=True)
+        per_kind: dict[str, AnalysisEvent] = {}
+        for event in bucket:
+            per_kind.setdefault(event.kind, event)
+
+        ordered_kinds = ["hh", "sn", "bd"]
+        if difficulty == "beginner":
+            ordered_kinds = ["sn", "bd", "hh"]
+
+        for kind in ordered_kinds:
+            event = per_kind.get(kind)
+            if not event:
+                continue
+            if counts[kind] >= difficulty_limits[kind]:
+                continue
+            if kind == "sn" and step % 8 not in {0, 4} and difficulty == "beginner":
+                continue
+            if kind == "bd" and difficulty == "beginner" and step % 4 not in {0, 4}:
+                continue
+            accepted.append((kind, step, event))
+            counts[kind] += 1
+
+    if counts["hh"] == 0:
+        for step in range(0, TOTAL_STEPS, 4):
+            accepted.append(("hh", step, None))
+        counts["hh"] = TOTAL_STEPS // 4
+
+    if counts["sn"] == 0:
+        for step in (8, 24, 40, 56):
+            if step < TOTAL_STEPS:
+                accepted.append(("sn", step, None))
+
+    if counts["bd"] == 0:
+        for step in (0, 16, 32, 48):
+            if step < TOTAL_STEPS:
+                accepted.append(("bd", step, None))
+
+    accepted.sort(key=lambda item: (item[1], NOTE_PRIORITY[item[0]]))
+    return accepted
+
+
+def events_to_phrase(accepted_events, difficulty: str):
+    phrase = [[], []]
+    hi_hat_open_steps = set()
+
+    if difficulty != "beginner":
+        for kind, step, event in accepted_events:
+            if kind != "hh" or event is None:
+                continue
+            if event.high_ratio > 0.58 and event.low_ratio < 0.16:
+                hi_hat_open_steps.add(step)
+
+    for kind, step, event in accepted_events:
+        measure_index = min(1, step // QUANTIZATION_STEPS_PER_BAR)
+        measure_step = step % QUANTIZATION_STEPS_PER_BAR
+        mapped_kind = kind
+        if kind == "hh" and step in hi_hat_open_steps:
+            mapped_kind = "oh"
+        phrase[measure_index].append((mapped_kind, measure_step))
+
+    if difficulty == "intermediate" and phrase[0]:
+        first_step = min(step for _kind, step in phrase[0])
+        if first_step == 0 and not any(kind == "cr" and step == 0 for kind, step in phrase[0]):
+            phrase[0].append(("cr", 0))
+            phrase[0].sort(key=lambda item: (item[1], NOTE_PRIORITY[item[0]]))
+
+    if difficulty == "pro" and phrase[1]:
+        if not any(kind == "cr" for kind, _step in phrase[1]):
+            phrase[1].append(("cr", 30))
+            phrase[1].sort(key=lambda item: (item[1], NOTE_PRIORITY[item[0]]))
+
+    return phrase
 
 
 def hi_hat_direction_xml(kind: str) -> str:
@@ -207,8 +421,7 @@ def measure_xml(measure_number: int, events, include_attributes: bool = False, i
     </measure>'''
 
 
-def build_musicxml(score_title: str, difficulty: str) -> str:
-    phrase = phrase_for_difficulty(difficulty)
+def build_musicxml(score_title: str, phrase) -> str:
     measures_xml = [
         measure_xml(index + 1, events, include_attributes=index == 0, is_last=index == len(phrase) - 1)
         for index, events in enumerate(phrase)
@@ -223,7 +436,7 @@ def build_musicxml(score_title: str, difficulty: str) -> str:
     <work-title>{escape(score_title)}</work-title>
   </work>
   <identification>
-    <creator type="arranger">Drumsheet AI notation baseline</creator>
+    <creator type="arranger">Drumsheet AI phase-1 transcription</creator>
   </identification>
   <part-list>
     <score-part id="P1">
@@ -241,6 +454,41 @@ def build_musicxml(score_title: str, difficulty: str) -> str:
 '''
 
 
+def summarize_result(difficulty: str, bpm: float, phrase, analysis_count: int) -> str:
+    visible_counts = {"bd": 0, "sn": 0, "hh": 0, "oh": 0, "cr": 0}
+    for measure in phrase:
+        for kind, _step in measure:
+            visible_counts[kind] = visible_counts.get(kind, 0) + 1
+
+    difficulty_text = {
+        "beginner": "Beginner view keeps the strongest backbone only.",
+        "intermediate": "Intermediate view keeps more supporting kick and hat motion.",
+        "pro": "Pro view keeps denser syncopation from the detected material.",
+    }[difficulty]
+
+    return (
+        f"Analysis-based 2-bar preview at about {round(bpm)} BPM from {analysis_count} detected hits. "
+        f"Visible events: kick {visible_counts.get('bd', 0)}, snare {visible_counts.get('sn', 0)}, "
+        f"hi-hat {visible_counts.get('hh', 0) + visible_counts.get('oh', 0)}. {difficulty_text}"
+    )
+
+
+def analyze_file(file_path: str, difficulty: str):
+    wav_path = decode_audio_to_wav(file_path)
+    try:
+        audio = load_wav_mono(wav_path)
+        bpm = estimate_tempo(compute_onset_envelope(audio)[1])
+        detected_events, _onset_env = detect_events(audio)
+        audio_duration = len(audio) / SAMPLE_RATE
+        window_start, _window_end = choose_preview_window(detected_events, bpm, audio_duration)
+        accepted_events = quantize_events(detected_events, bpm, window_start, difficulty)
+        phrase = events_to_phrase(accepted_events, difficulty)
+        return bpm, detected_events, phrase
+    finally:
+        if os.path.exists(wav_path):
+            os.unlink(wav_path)
+
+
 def main():
     if len(sys.argv) < 3:
         print(json.dumps({"error": "Usage: process_song.py <file_path> <difficulty>"}))
@@ -253,17 +501,19 @@ def main():
         sys.exit(1)
 
     clean_score_title = clean_title(file_path)
-    music_xml = build_musicxml(clean_score_title, difficulty)
-    summary = {
-        "beginner": "Beginner: a two-bar phrase with a stable straight groove in bar 1 and a tiny safe variation in bar 2.",
-        "intermediate": "Intermediate: a two-bar phrase that keeps the core backbeat while bar 2 adds clearer kick and hi-hat variation.",
-        "pro": "Pro: a two-bar phrase with stronger syncopation, ghost-note color, and a more musical second-bar turnaround feel while preserving the same core placement.",
-    }[difficulty]
+
+    try:
+        bpm, detected_events, phrase = analyze_file(file_path, difficulty)
+        music_xml = build_musicxml(clean_score_title, phrase)
+        summary = summarize_result(difficulty, bpm, phrase, len(detected_events))
+    except Exception as error:
+        print(json.dumps({"error": f"Audio analysis failed: {error}"}))
+        sys.exit(1)
 
     print(json.dumps({
-        "title": f"Notation baseline for {clean_score_title}",
+        "title": f"Phase 1 transcription for {clean_score_title}",
         "difficulty": difficulty,
-        "confidence": 0.9,
+        "confidence": 0.62,
         "previewMode": "musicxml",
         "summary": summary,
         "musicXml": music_xml,
