@@ -1,0 +1,26 @@
+# Benchmark Workflow
+
+This folder tracks benchmark songs and expected groove behavior.
+
+## Purpose
+Reduce repeat debugging of the same class of bugs by testing every major patch against a fixed set of songs.
+
+## Per-song benchmark record should include
+- song name
+- source file/location
+- expected BPM range
+- expected hi-hat pulse (8th / 16th / mixed)
+- expected snare behavior
+- expected kick backbone
+- known failure modes
+- last reviewed result
+
+## Minimum benchmark pack target
+- 1 simple pop groove
+- 1 clean 16th-hat groove
+- 1 straight rock groove
+- 1 drum-heavy mix
+- 1 harder mixed track
+
+## Current immediate benchmark
+- Billie Jean should become a reference for obvious pop backbone behavior.
