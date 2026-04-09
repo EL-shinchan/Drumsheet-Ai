@@ -402,24 +402,24 @@ def hi_hat_direction_xml(kind: str) -> str:
     </direction>'''
 
 
-def note_xml(kind: str, chord: bool = False) -> str:
+def note_xml(kind: str, duration: int = 2, note_type: str = "16th", voice: int = 1, chord: bool = False) -> str:
     if kind == "hh":
-        step, octave, inst, typ, notehead, stem, duration = "G", 5, "P1-I43", "eighth", "x", "up", 4
+        step, octave, inst, notehead, stem = "G", 5, "P1-I43", "x", "up"
         extra = ""
     elif kind == "oh":
-        step, octave, inst, typ, notehead, stem, duration = "G", 5, "P1-I43", "eighth", "x", "up", 4
+        step, octave, inst, notehead, stem = "G", 5, "P1-I43", "x", "up"
         extra = ""
     elif kind == "cr":
-        step, octave, inst, typ, notehead, stem, duration = "A", 5, "P1-I49", "eighth", "x", "up", 4
+        step, octave, inst, notehead, stem = "A", 5, "P1-I49", "x", "up"
         extra = "      <notations><articulations><accent/></articulations></notations>\n"
     elif kind == "sn":
-        step, octave, inst, typ, notehead, stem, duration = "C", 5, "P1-I39", "quarter", None, "up", 8
+        step, octave, inst, notehead, stem = "C", 5, "P1-I39", None, "up"
         extra = ""
     elif kind == "gh":
-        step, octave, inst, typ, notehead, stem, duration = "C", 5, "P1-I39", "16th", None, "up", 2
+        step, octave, inst, notehead, stem = "C", 5, "P1-I39", None, "up"
         extra = "      <notehead parentheses=\"yes\">normal</notehead>\n"
     elif kind == "bd":
-        step, octave, inst, typ, notehead, stem, duration = "F", 4, "P1-I36", "quarter", None, "down", 8
+        step, octave, inst, notehead, stem = "F", 4, "P1-I36", None, "down"
         extra = ""
     else:
         raise ValueError(kind)
@@ -434,8 +434,8 @@ def note_xml(kind: str, chord: bool = False) -> str:
         "      </unpitched>",
         f"      <duration>{duration}</duration>",
         f"      <instrument id=\"{inst}\"/>",
-        f"      <voice>{'2' if kind == 'bd' else '1'}</voice>",
-        f"      <type>{typ}</type>",
+        f"      <voice>{voice}</voice>",
+        f"      <type>{note_type}</type>",
     ])
     if notehead:
         parts.append(f"      <notehead>{notehead}</notehead>")
@@ -445,6 +445,26 @@ def note_xml(kind: str, chord: bool = False) -> str:
         parts.append(extra.rstrip("\n"))
     parts.append("    </note>")
     return "\n".join(parts)
+
+
+def rest_xml(duration: int = 2, note_type: str = "16th", voice: int = 1) -> str:
+    return "\n".join([
+        "    <note>",
+        "      <rest/>",
+        f"      <duration>{duration}</duration>",
+        f"      <voice>{voice}</voice>",
+        f"      <type>{note_type}</type>",
+        "      <staff>1</staff>",
+        "    </note>",
+    ])
+
+
+def backup_xml(duration: int) -> str:
+    return "\n".join([
+        "    <backup>",
+        f"      <duration>{duration}</duration>",
+        "    </backup>",
+    ])
 
 
 def measure_xml(measure_number: int, events, include_attributes: bool = False, is_last: bool = False) -> str:
@@ -464,15 +484,35 @@ def measure_xml(measure_number: int, events, include_attributes: bool = False, i
             "      </attributes>",
         ])
 
-    for pos in sorted(grouped):
-        kinds = grouped[pos]
+    voice1_map = {}
+    voice2_map = {}
+    for step in range(QUANTIZATION_STEPS_PER_BAR):
+        kinds = sorted(grouped.get(step, []), key=lambda k: NOTE_PRIORITY[k])
+        voice1_map[step] = [kind for kind in kinds if kind != "bd"]
+        voice2_map[step] = [kind for kind in kinds if kind == "bd"]
+
+    for step in range(QUANTIZATION_STEPS_PER_BAR):
+        kinds = voice1_map[step]
         hi_hat_kind = next((kind for kind in kinds if kind in HI_HAT_SYMBOLS), None)
         if hi_hat_kind:
             body.append(hi_hat_direction_xml(hi_hat_kind))
 
-        order = sorted(kinds, key=lambda k: (k == "bd", NOTE_PRIORITY[k]))
-        for i, kind in enumerate(order):
-            body.append(note_xml(kind, chord=i > 0))
+        if not kinds:
+            body.append(rest_xml(voice=1))
+            continue
+
+        for index, kind in enumerate(kinds):
+            body.append(note_xml(kind, voice=1, chord=index > 0))
+
+    body.append(backup_xml(QUANTIZATION_STEPS_PER_BAR * 2))
+
+    for step in range(QUANTIZATION_STEPS_PER_BAR):
+        kinds = voice2_map[step]
+        if not kinds:
+            body.append(rest_xml(voice=2))
+            continue
+        for index, kind in enumerate(kinds):
+            body.append(note_xml(kind, voice=2, chord=index > 0))
 
     barline = "      <barline location=\"right\"><bar-style>light-heavy</bar-style></barline>" if is_last else ""
     if barline:
