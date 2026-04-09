@@ -250,7 +250,7 @@ def choose_preview_window(events: list[AnalysisEvent], bpm: float, audio_duratio
     return best_start, min(audio_duration, best_start + phrase_duration)
 
 
-def quantize_events(events: list[AnalysisEvent], bpm: float, window_start: float, difficulty: str):
+def quantize_events(events: list[AnalysisEvent], bpm: float, window_start: float):
     beat_duration = 60.0 / bpm
     step_duration = beat_duration / 8.0
     window_end = window_start + beat_duration * 8
@@ -262,56 +262,101 @@ def quantize_events(events: list[AnalysisEvent], bpm: float, window_start: float
         step = max(0, min(TOTAL_STEPS - 1, step))
         grouped.setdefault(step, []).append(event)
 
-    difficulty_limits = {
-        "beginner": {"bd": 4, "sn": 4, "hh": 10},
-        "intermediate": {"bd": 6, "sn": 4, "hh": 14},
-        "pro": {"bd": 8, "sn": 6, "hh": 20},
-    }[difficulty]
-
     quantized_hits = []
-    accepted = []
-    counts = {"bd": 0, "sn": 0, "hh": 0}
-
     for step in sorted(grouped):
         bucket = sorted(grouped[step], key=lambda event: event.strength, reverse=True)
         per_kind: dict[str, AnalysisEvent] = {}
         for event in bucket:
             per_kind.setdefault(event.kind, event)
-
         for kind, event in per_kind.items():
             quantized_hits.append((kind, step, event, False, "detected"))
 
-        ordered_kinds = ["sn", "bd", "hh"] if difficulty == "beginner" else ["sn", "bd", "hh"]
-        for kind in ordered_kinds:
-            event = per_kind.get(kind)
-            if not event:
-                continue
-            if counts[kind] >= difficulty_limits[kind]:
-                continue
-            if kind == "sn" and difficulty == "beginner" and step % 8 not in {8 % 8, 24 % 8, 0, 4}:
-                continue
-            if kind == "bd" and difficulty == "beginner" and step % 8 not in {0, 4}:
-                continue
-            accepted.append((kind, step, event, True, "detected"))
-            counts[kind] += 1
+    quantized_hits.sort(key=lambda item: (item[1], NOTE_PRIORITY[item[0]]))
+    return quantized_hits, window_end
 
-    if counts["hh"] == 0:
-        for step in range(0, TOTAL_STEPS, 4):
-            accepted.append(("hh", step, None, True, "fallback"))
 
-    if counts["sn"] == 0:
-        for step in (8, 24, 40, 56):
-            if step < TOTAL_STEPS:
-                accepted.append(("sn", step, None, True, "fallback"))
+def skeleton_for_difficulty(difficulty: str):
+    hats = [step for step in range(0, TOTAL_STEPS, 4)]
+    snares = [8, 24, 40, 56]
+    kicks = [0, 16, 32, 48]
 
-    if counts["bd"] == 0:
-        for step in (0, 16, 32, 48):
-            if step < TOTAL_STEPS:
-                accepted.append(("bd", step, None, True, "fallback"))
+    if difficulty == "intermediate":
+        kicks = [0, 12, 16, 28, 32, 48]
+    elif difficulty == "pro":
+        hats = [step for step in range(0, TOTAL_STEPS, 2)]
+        kicks = [0, 12, 16, 20, 32, 44, 48, 60]
+
+    skeleton = []
+    for step in hats:
+        skeleton.append(("hh", step, None, True, "skeleton"))
+    for step in snares:
+        skeleton.append(("sn", step, None, True, "skeleton"))
+    for step in kicks:
+        skeleton.append(("bd", step, None, True, "skeleton"))
+    skeleton.sort(key=lambda item: (item[1], NOTE_PRIORITY[item[0]]))
+    return skeleton
+
+
+def best_detected_near_step(quantized_hits, kind: str, target_step: int, max_distance: int):
+    best = None
+    best_score = -1.0
+    for hit_kind, step, event, _accepted, source in quantized_hits:
+        if source != "detected" or hit_kind != kind or event is None:
+            continue
+        distance = abs(step - target_step)
+        if distance > max_distance:
+            continue
+        score = event.strength - (distance * 0.12) + step_backbeat_bonus(target_step, kind)
+        if score > best_score:
+            best_score = score
+            best = (hit_kind, target_step, event, True, "override")
+    return best
+
+
+def merge_with_backbone(quantized_hits, difficulty: str):
+    skeleton = skeleton_for_difficulty(difficulty)
+    accepted = []
+    used_steps = set()
+
+    for kind, step, _event, _accepted, _source in skeleton:
+        override = None
+        if kind == "sn":
+            override = best_detected_near_step(quantized_hits, "sn", step, 2)
+        elif kind == "bd":
+            override = best_detected_near_step(quantized_hits, "bd", step, 3)
+        elif kind == "hh":
+            override = best_detected_near_step(quantized_hits, "hh", step, 1)
+
+        if override is not None:
+            accepted.append(override)
+            used_steps.add((override[0], override[1]))
+        else:
+            accepted.append((kind, step, None, True, "skeleton"))
+            used_steps.add((kind, step))
+
+    if difficulty in {"intermediate", "pro"}:
+        extra_limits = {"intermediate": {"bd": 2, "hh": 2}, "pro": {"bd": 3, "hh": 4, "sn": 1}}[difficulty]
+        added = {"bd": 0, "sn": 0, "hh": 0}
+        for hit_kind, step, event, _accepted, source in quantized_hits:
+            if source != "detected" or event is None:
+                continue
+            if (hit_kind, step) in used_steps:
+                continue
+            if hit_kind not in extra_limits:
+                continue
+            if added[hit_kind] >= extra_limits[hit_kind]:
+                continue
+            pos_in_bar = step % QUANTIZATION_STEPS_PER_BAR
+            if hit_kind == "hh" and pos_in_bar in {0, 8, 16, 24}:
+                continue
+            if hit_kind == "sn" and pos_in_bar in {8, 24}:
+                continue
+            accepted.append((hit_kind, step, event, True, "detected"))
+            added[hit_kind] += 1
+            used_steps.add((hit_kind, step))
 
     accepted.sort(key=lambda item: (item[1], NOTE_PRIORITY[item[0]]))
-    quantized_hits.sort(key=lambda item: (item[1], NOTE_PRIORITY[item[0]]))
-    return quantized_hits, accepted, window_end
+    return accepted
 
 
 def events_to_phrase(accepted_events, difficulty: str):
@@ -319,8 +364,8 @@ def events_to_phrase(accepted_events, difficulty: str):
     hi_hat_open_steps = set()
 
     if difficulty != "beginner":
-        for kind, step, event, _accepted, _source in accepted_events:
-            if kind != "hh" or event is None:
+        for kind, step, event, _accepted, source in accepted_events:
+            if kind != "hh" or event is None or source == "skeleton":
                 continue
             if event.high_ratio > 0.58 and event.low_ratio < 0.16:
                 hi_hat_open_steps.add(step)
@@ -333,11 +378,9 @@ def events_to_phrase(accepted_events, difficulty: str):
             mapped_kind = "oh"
         phrase[measure_index].append((mapped_kind, measure_step))
 
-    if difficulty == "intermediate" and phrase[0]:
-        first_step = min(step for _kind, step in phrase[0])
-        if first_step == 0 and not any(kind == "cr" and step == 0 for kind, step in phrase[0]):
-            phrase[0].append(("cr", 0))
-            phrase[0].sort(key=lambda item: (item[1], NOTE_PRIORITY[item[0]]))
+    if difficulty == "intermediate" and phrase[0] and not any(kind == "cr" and step == 0 for kind, step in phrase[0]):
+        phrase[0].append(("cr", 0))
+        phrase[0].sort(key=lambda item: (item[1], NOTE_PRIORITY[item[0]]))
 
     if difficulty == "pro" and phrase[1] and not any(kind == "cr" for kind, _step in phrase[1]):
         phrase[1].append(("cr", 30))
@@ -456,7 +499,7 @@ def build_musicxml(score_title: str, phrase) -> str:
     <work-title>{escape(score_title)}</work-title>
   </work>
   <identification>
-    <creator type="arranger">Drumsheet AI phase-2 debug transcription</creator>
+    <creator type="arranger">Drumsheet AI backbone reconstruction</creator>
   </identification>
   <part-list>
     <score-part id="P1">
@@ -481,13 +524,13 @@ def summarize_result(difficulty: str, bpm: float, phrase, analysis_count: int, w
             visible_counts[kind] = visible_counts.get(kind, 0) + 1
 
     difficulty_text = {
-        "beginner": "Beginner view keeps the strongest backbone only.",
-        "intermediate": "Intermediate view keeps more supporting kick and hat motion.",
-        "pro": "Pro view keeps denser syncopation from the detected material.",
+        "beginner": "Beginner view keeps a clean pop/rock backbone first.",
+        "intermediate": "Intermediate view keeps the backbone and allows a bit more real variation.",
+        "pro": "Pro view preserves the backbone while letting in more detected syncopation.",
     }[difficulty]
 
     return (
-        f"Analysis-based 2-bar preview at about {round(bpm)} BPM from {analysis_count} detected hits. "
+        f"Backbone-reconstructed 2-bar preview at about {round(bpm)} BPM from {analysis_count} detected hits. "
         f"Window starts at {window_start:.2f}s. Visible events: kick {visible_counts.get('bd', 0)}, "
         f"snare {visible_counts.get('sn', 0)}, hi-hat {visible_counts.get('hh', 0) + visible_counts.get('oh', 0)}. {difficulty_text}"
     )
@@ -529,7 +572,8 @@ def analyze_file(file_path: str, difficulty: str):
         detected_events, _ = detect_events(audio)
         audio_duration = len(audio) / SAMPLE_RATE
         window_start, window_end = choose_preview_window(detected_events, bpm, audio_duration)
-        quantized_hits, accepted_events, quantized_window_end = quantize_events(detected_events, bpm, window_start, difficulty)
+        quantized_hits, quantized_window_end = quantize_events(detected_events, bpm, window_start)
+        accepted_events = merge_with_backbone(quantized_hits, difficulty)
         phrase = events_to_phrase(accepted_events, difficulty)
         debug = {
             "bpm": round(bpm, 2),
@@ -570,9 +614,9 @@ def main():
         sys.exit(1)
 
     print(json.dumps({
-        "title": f"Phase 2 transcription for {clean_score_title}",
+        "title": f"Backbone transcription for {clean_score_title}",
         "difficulty": difficulty,
-        "confidence": 0.66,
+        "confidence": 0.72,
         "previewMode": "musicxml",
         "summary": summary,
         "musicXml": music_xml,

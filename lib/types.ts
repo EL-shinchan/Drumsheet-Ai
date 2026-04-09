@@ -9,7 +9,7 @@ export type DebugHit = {
   midRatio: number;
   highRatio: number;
   accepted: boolean;
-  source: "detected" | "fallback";
+  source: "detected" | "fallback" | "skeleton" | "override";
 };
 
 export type DebugInfo = {
