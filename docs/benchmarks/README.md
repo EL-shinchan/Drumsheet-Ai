@@ -24,6 +24,7 @@ Reduce repeat debugging of the same class of bugs by testing every major patch a
 
 ## Current immediate benchmark
 - Billie Jean should become a reference for obvious pop backbone behavior.
+- Concrete record: `docs/benchmarks/billie-jean.md`
 
 ## Canonical beginner pop backbone expectation
 Use this as the default review baseline for obvious pop/rock grooves unless strong song evidence contradicts it:

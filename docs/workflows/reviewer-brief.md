@@ -36,3 +36,4 @@ Return a short structured review:
 - Be skeptical.
 - Prefer concrete bug statements over vague style opinions.
 - Treat Billie Jean-style pop backbone checks as a key benchmark.
+- Prefer the concrete benchmark record in `docs/benchmarks/billie-jean.md` when reviewing pop-groove fixes.
