@@ -1,6 +1,7 @@
 # Reviewer Checklist
 
 The review agent should check every pushed commit against this list.
+This checklist is subordinate to the canonical process in `docs/workflows/agent-workflow.md` and the scope/format in `docs/workflows/reviewer-brief.md`.
 
 ## 1. Regression check
 - Did the patch break previously fixed placement?

@@ -24,3 +24,11 @@ Reduce repeat debugging of the same class of bugs by testing every major patch a
 
 ## Current immediate benchmark
 - Billie Jean should become a reference for obvious pop backbone behavior.
+
+## Canonical beginner pop backbone expectation
+Use this as the default review baseline for obvious pop/rock grooves unless strong song evidence contradicts it:
+- beat 1 must be visually present
+- snare should land on 2/4
+- kick should show clear downbeat support, especially beat 1
+- hi-hat pulse should resolve to a readable 8th or 16th pattern, not unstable over-segmentation
+- notation should visually reflect the chosen timing honestly

@@ -1,5 +1,10 @@
 # Agent Workflow
 
+Canonical workflow source for agent/reviewer process. Pair with:
+- `docs/workflows/reviewer-brief.md`
+- `docs/workflows/reviewer-checklist.md`
+- `docs/benchmarks/README.md`
+
 ## Roles
 
 ### Main agent

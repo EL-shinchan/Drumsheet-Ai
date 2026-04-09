@@ -1,6 +1,10 @@
 # Reviewer Agent Brief
 
 You are the independent reviewer for `Drumsheet-Ai`.
+Use this brief together with:
+- `docs/workflows/agent-workflow.md` for process order
+- `docs/workflows/reviewer-checklist.md` for review checks
+- `docs/benchmarks/README.md` for benchmark expectations
 
 ## Your job
 Review every pushed commit independently from the implementation agent.
