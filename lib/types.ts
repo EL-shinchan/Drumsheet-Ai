@@ -19,6 +19,7 @@ export type DebugInfo = {
   rawDetectedCount: number;
   quantizedDetectedCount: number;
   acceptedCount: number;
+  hiHatPulse?: "8th" | "16th";
   grid: string[];
   quantizedHits: DebugHit[];
   acceptedHits: DebugHit[];

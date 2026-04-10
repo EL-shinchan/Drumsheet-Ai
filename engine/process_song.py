@@ -275,15 +275,47 @@ def quantize_events(events: list[AnalysisEvent], bpm: float, window_start: float
     return quantized_hits, window_end
 
 
-def skeleton_for_difficulty(difficulty: str):
-    hats = [step for step in range(0, TOTAL_STEPS, 4)]
+def infer_hi_hat_pulse(quantized_hits):
+    hat_steps = [step for kind, step, event, _accepted, source in quantized_hits if source == "detected" and kind == "hh" and event is not None]
+    if not hat_steps:
+        return 4
+
+    eighth_slots = {step for step in range(0, TOTAL_STEPS, 4)}
+    sixteenth_slots = {step for step in range(0, TOTAL_STEPS, 2)}
+
+    eighth_score = 0.0
+    sixteenth_score = 0.0
+    for kind, step, event, _accepted, source in quantized_hits:
+        if source != "detected" or kind != "hh" or event is None:
+            continue
+        strength = event.strength
+        if step in eighth_slots:
+            eighth_score += strength * 1.2
+        elif min(abs(step - slot) for slot in eighth_slots) == 1:
+            eighth_score += strength * 0.35
+        else:
+            eighth_score -= strength * 0.4
+
+        if step in sixteenth_slots:
+            sixteenth_score += strength
+        elif min(abs(step - slot) for slot in sixteenth_slots) == 1:
+            sixteenth_score += strength * 0.2
+        else:
+            sixteenth_score -= strength * 0.35
+
+    if sixteenth_score > eighth_score * 1.28:
+        return 2
+    return 4
+
+
+def skeleton_for_difficulty(difficulty: str, hi_hat_step: int):
+    hats = [step for step in range(0, TOTAL_STEPS, hi_hat_step)]
     snares = [8, 24, 40, 56]
     kicks = [0, 16, 32, 48]
 
     if difficulty == "intermediate":
         kicks = [0, 12, 16, 28, 32, 48]
     elif difficulty == "pro":
-        hats = [step for step in range(0, TOTAL_STEPS, 2)]
         kicks = [0, 12, 16, 20, 32, 44, 48, 60]
 
     skeleton = []
@@ -314,7 +346,8 @@ def best_detected_near_step(quantized_hits, kind: str, target_step: int, max_dis
 
 
 def merge_with_backbone(quantized_hits, difficulty: str):
-    skeleton = skeleton_for_difficulty(difficulty)
+    hi_hat_step = infer_hi_hat_pulse(quantized_hits)
+    skeleton = skeleton_for_difficulty(difficulty, hi_hat_step)
     accepted = []
     used_steps = set()
 
@@ -325,7 +358,7 @@ def merge_with_backbone(quantized_hits, difficulty: str):
         elif kind == "bd":
             override = best_detected_near_step(quantized_hits, "bd", step, 3)
         elif kind == "hh":
-            override = best_detected_near_step(quantized_hits, "hh", step, 1)
+            override = best_detected_near_step(quantized_hits, "hh", step, 0 if hi_hat_step == 2 else 1)
 
         if override is not None:
             accepted.append(override)
@@ -335,7 +368,10 @@ def merge_with_backbone(quantized_hits, difficulty: str):
             used_steps.add((kind, step))
 
     if difficulty in {"intermediate", "pro"}:
-        extra_limits = {"intermediate": {"bd": 2, "hh": 2}, "pro": {"bd": 3, "hh": 4, "sn": 1}}[difficulty]
+        extra_limits = {
+            "intermediate": {"bd": 2, "hh": 1 if hi_hat_step == 4 else 2},
+            "pro": {"bd": 3, "hh": 2 if hi_hat_step == 4 else 4, "sn": 1},
+        }[difficulty]
         added = {"bd": 0, "sn": 0, "hh": 0}
         for hit_kind, step, event, _accepted, source in quantized_hits:
             if source != "detected" or event is None:
@@ -347,8 +383,11 @@ def merge_with_backbone(quantized_hits, difficulty: str):
             if added[hit_kind] >= extra_limits[hit_kind]:
                 continue
             pos_in_bar = step % QUANTIZATION_STEPS_PER_BAR
-            if hit_kind == "hh" and pos_in_bar in {0, 8, 16, 24}:
-                continue
+            if hit_kind == "hh":
+                if hi_hat_step == 4 and pos_in_bar % 4 != 2:
+                    continue
+                if hi_hat_step == 2 and pos_in_bar % 2 != 1:
+                    continue
             if hit_kind == "sn" and pos_in_bar in {8, 24}:
                 continue
             accepted.append((hit_kind, step, event, True, "detected"))
@@ -356,7 +395,7 @@ def merge_with_backbone(quantized_hits, difficulty: str):
             used_steps.add((hit_kind, step))
 
     accepted.sort(key=lambda item: (item[1], NOTE_PRIORITY[item[0]]))
-    return accepted
+    return accepted, hi_hat_step
 
 
 def events_to_phrase(accepted_events, difficulty: str):
@@ -557,7 +596,7 @@ def build_musicxml(score_title: str, phrase) -> str:
 '''
 
 
-def summarize_result(difficulty: str, bpm: float, phrase, analysis_count: int, window_start: float) -> str:
+def summarize_result(difficulty: str, bpm: float, phrase, analysis_count: int, window_start: float, hi_hat_step: int) -> str:
     visible_counts = {"bd": 0, "sn": 0, "hh": 0, "oh": 0, "cr": 0}
     for measure in phrase:
         for kind, _step in measure:
@@ -569,9 +608,10 @@ def summarize_result(difficulty: str, bpm: float, phrase, analysis_count: int, w
         "pro": "Pro view preserves the backbone while letting in more detected syncopation.",
     }[difficulty]
 
+    pulse_text = "16th" if hi_hat_step == 2 else "8th"
     return (
         f"Backbone-reconstructed 2-bar preview at about {round(bpm)} BPM from {analysis_count} detected hits. "
-        f"Window starts at {window_start:.2f}s. Visible events: kick {visible_counts.get('bd', 0)}, "
+        f"Window starts at {window_start:.2f}s. Inferred hi-hat pulse: {pulse_text}. Visible events: kick {visible_counts.get('bd', 0)}, "
         f"snare {visible_counts.get('sn', 0)}, hi-hat {visible_counts.get('hh', 0) + visible_counts.get('oh', 0)}. {difficulty_text}"
     )
 
@@ -613,7 +653,7 @@ def analyze_file(file_path: str, difficulty: str):
         audio_duration = len(audio) / SAMPLE_RATE
         window_start, window_end = choose_preview_window(detected_events, bpm, audio_duration)
         quantized_hits, quantized_window_end = quantize_events(detected_events, bpm, window_start)
-        accepted_events = merge_with_backbone(quantized_hits, difficulty)
+        accepted_events, hi_hat_step = merge_with_backbone(quantized_hits, difficulty)
         phrase = events_to_phrase(accepted_events, difficulty)
         debug = {
             "bpm": round(bpm, 2),
@@ -623,10 +663,11 @@ def analyze_file(file_path: str, difficulty: str):
             "quantizedDetectedCount": len(quantized_hits),
             "acceptedCount": len(accepted_events),
             "grid": build_debug_grid(),
+            "hiHatPulse": "16th" if hi_hat_step == 2 else "8th",
             "quantizedHits": [serialize_hit(kind, step, event, accepted, source) for kind, step, event, accepted, source in quantized_hits],
             "acceptedHits": [serialize_hit(kind, step, event, accepted, source) for kind, step, event, accepted, source in accepted_events],
         }
-        return bpm, detected_events, phrase, debug, window_start
+        return bpm, detected_events, phrase, debug, window_start, hi_hat_step
     finally:
         if os.path.exists(wav_path):
             os.unlink(wav_path)
@@ -646,9 +687,9 @@ def main():
     clean_score_title = clean_title(file_path)
 
     try:
-        bpm, detected_events, phrase, debug, window_start = analyze_file(file_path, difficulty)
+        bpm, detected_events, phrase, debug, window_start, hi_hat_step = analyze_file(file_path, difficulty)
         music_xml = build_musicxml(clean_score_title, phrase)
-        summary = summarize_result(difficulty, bpm, phrase, len(detected_events), window_start)
+        summary = summarize_result(difficulty, bpm, phrase, len(detected_events), window_start, hi_hat_step)
     except Exception as error:
         print(json.dumps({"error": f"Audio analysis failed: {error}"}))
         sys.exit(1)
