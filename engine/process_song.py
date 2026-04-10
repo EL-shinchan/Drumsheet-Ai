@@ -275,16 +275,25 @@ def quantize_events(events: list[AnalysisEvent], bpm: float, window_start: float
     return quantized_hits, window_end
 
 
-def infer_hi_hat_pulse(quantized_hits):
-    hat_steps = [step for kind, step, event, _accepted, source in quantized_hits if source == "detected" and kind == "hh" and event is not None]
-    if not hat_steps:
+def infer_hi_hat_pulse(quantized_hits, difficulty: str = "intermediate"):
+    hat_hits = [
+        (step, event)
+        for kind, step, event, _accepted, source in quantized_hits
+        if source == "detected" and kind == "hh" and event is not None
+    ]
+    if not hat_hits:
         return 4
 
     eighth_slots = {step for step in range(0, TOTAL_STEPS, 4)}
     sixteenth_slots = {step for step in range(0, TOTAL_STEPS, 2)}
+    sixteenth_only_slots = {step for step in range(0, TOTAL_STEPS, 2) if step not in eighth_slots}
 
     eighth_score = 0.0
     sixteenth_score = 0.0
+    sixteenth_only_score = 0.0
+    sixteenth_only_hits = 0
+    strongest_sixteenth_only = 0.0
+
     for kind, step, event, _accepted, source in quantized_hits:
         if source != "detected" or kind != "hh" or event is None:
             continue
@@ -302,6 +311,20 @@ def infer_hi_hat_pulse(quantized_hits):
             sixteenth_score += strength * 0.2
         else:
             sixteenth_score -= strength * 0.35
+
+        if step in sixteenth_only_slots:
+            sixteenth_only_score += strength
+            sixteenth_only_hits += 1
+            strongest_sixteenth_only = max(strongest_sixteenth_only, strength)
+
+    if difficulty == "beginner":
+        enough_dense_hits = sixteenth_only_hits >= 6
+        enough_dense_energy = sixteenth_only_score > max(0.18, eighth_score * 0.52)
+        standout_dense_hit = strongest_sixteenth_only > 0.03
+        sixteenth_clearly_wins = sixteenth_score > eighth_score * 1.65
+        if enough_dense_hits and enough_dense_energy and standout_dense_hit and sixteenth_clearly_wins:
+            return 2
+        return 4
 
     if sixteenth_score > eighth_score * 1.28:
         return 2
@@ -346,7 +369,7 @@ def best_detected_near_step(quantized_hits, kind: str, target_step: int, max_dis
 
 
 def merge_with_backbone(quantized_hits, difficulty: str):
-    hi_hat_step = infer_hi_hat_pulse(quantized_hits)
+    hi_hat_step = infer_hi_hat_pulse(quantized_hits, difficulty)
     skeleton = skeleton_for_difficulty(difficulty, hi_hat_step)
     accepted = []
     used_steps = set()
