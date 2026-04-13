@@ -33,3 +33,8 @@ Use this as the default review baseline for obvious pop/rock grooves unless stro
 - kick should show clear downbeat support, especially beat 1
 - hi-hat pulse should resolve to a readable 8th or 16th pattern, not unstable over-segmentation
 - notation should visually reflect the chosen timing honestly
+
+## Source of truth
+- `benchmarks/manifest.json` is the canonical source for machine-checkable benchmark expectations.
+- `docs/benchmarks/*.md` remain human-facing notes and review context.
+- The harness does not judge notation beauty automatically; rendered score review is still required.

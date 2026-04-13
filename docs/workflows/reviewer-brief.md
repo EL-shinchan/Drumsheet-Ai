@@ -21,8 +21,9 @@ Review every pushed commit independently from the implementation agent.
    - groove reconstruction
    - notation encoding
    - visual rendering
-3. Whether the patch really fixes the user-reported issue or just moves it.
-4. Whether debug output still honestly reflects what the engine is doing.
+3. Whether the relevant benchmark passed / warned / failed when the patch affects transcription behavior.
+4. Whether the patch really fixes the user-reported issue or just moves it.
+5. Whether debug output still honestly reflects what the engine is doing.
 
 ## Reporting format
 Return a short structured review:

@@ -4,6 +4,9 @@
 - Name: Billie Jean
 - Artist: Michael Jackson
 - Use: canonical simple pop backbone benchmark
+- Canonical benchmark manifest entry: `benchmarks/manifest.json`
+- Expected audio path for pass 1: `benchmarks/audio/billie-jean.mp3`
+- Harness command: `python3 scripts/run_benchmarks.py --benchmark billie-jean`
 
 ## Why this benchmark matters
 This song should expose basic groove mistakes immediately. If the system cannot produce a recognizably correct beginner backbone here, the core pipeline is still failing.

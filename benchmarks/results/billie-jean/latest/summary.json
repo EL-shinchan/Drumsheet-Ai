@@ -1,0 +1,18 @@
+{
+  "benchmarkId": "billie-jean",
+  "songName": "Billie Jean",
+  "overallStatus": "fail",
+  "generatedAt": "2026-04-13T18:47:11.331361+08:00",
+  "resultsByDifficulty": {},
+  "crossDifficultyChecks": [
+    {
+      "id": "audio-file",
+      "status": "fail",
+      "message": "Missing benchmark audio file: benchmarks/audio/billie-jean.mp3"
+    }
+  ],
+  "humanReviewReminder": [
+    "Add the benchmark audio file before trusting benchmark output.",
+    "Machine checks do not replace rendered notation review."
+  ]
+}

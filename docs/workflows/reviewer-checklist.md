@@ -26,14 +26,20 @@ Especially for beginner mode:
 - hi-hat pulse readable and not over-segmented
 - no nonsense density beyond the chosen pulse
 
-## 4. Debug visibility check
+## 4. Benchmark check
+- If the patch affects transcription behavior, did the relevant benchmark run?
+- Did the benchmark pass / warn / fail?
+- If it failed, is the failure called out explicitly instead of being buried?
+
+## 5. Debug visibility check
 - Are debug outputs still useful after the patch?
 - Can the failure be traced through the pipeline?
 - Are source tags (`skeleton`, `override`, `detected`, `fallback`) still honest?
 
-## 5. User-facing report format
+## 6. User-facing report format
 Reviewer outcome should include:
 - pass / concern / fail
 - exact concern
 - likely layer causing it
+- benchmark result if relevant
 - recommended next fix

@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "benchmarks": [
+    {
+      "id": "billie-jean",
+      "enabled": true,
+      "songName": "Billie Jean",
+      "artist": "Michael Jackson",
+      "audioPath": "benchmarks/audio/billie-jean.mp3",
+      "difficulties": ["beginner", "intermediate", "pro"],
+      "expectations": {
+        "bpmRange": [115, 121],
+        "allowedHatPulseByDifficulty": {
+          "beginner": ["8th"],
+          "intermediate": ["8th", "16th"],
+          "pro": ["8th", "16th"]
+        },
+        "requiredStepsByDifficulty": {
+          "beginner": {
+            "sn": [8, 24, 40, 56],
+            "bd": [0]
+          }
+        },
+        "minVisibleCountsByDifficulty": {
+          "beginner": {
+            "hh": 8,
+            "sn": 4,
+            "bd": 2
+          }
+        },
+        "maxVisibleCountsByDifficulty": {
+          "beginner": {
+            "hh": 16,
+            "sn": 4
+          }
+        },
+        "densityGuardrails": {
+          "beginnerNotDenserThan": ["intermediate", "pro"]
+        }
+      }
+    }
+  ]
+}

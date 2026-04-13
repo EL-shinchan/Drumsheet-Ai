@@ -30,6 +30,7 @@ Responsible for:
 5. Main agent reports outcome in chat:
    - what changed
    - what tests passed
+   - what benchmark(s) passed / warned / failed
    - what reviewer found
    - what still looks risky
 6. Main agent stops and asks: **approve next step**
