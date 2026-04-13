@@ -145,23 +145,23 @@ def total_density(result_summary: dict[str, Any]) -> int:
 
 def evaluate_cross_difficulty(results_by_difficulty: dict[str, dict[str, Any]], benchmark: dict[str, Any]) -> list[dict[str, str]]:
     checks: list[dict[str, str]] = []
+    available_difficulties = set(results_by_difficulty)
     guardrails = benchmark.get("expectations", {}).get("densityGuardrails", {})
     beginner_targets = guardrails.get("beginnerNotDenserThan", [])
     beginner = results_by_difficulty.get("beginner")
     if beginner and isinstance(beginner_targets, list):
-        beginner_density = total_density(beginner)
-        for target in beginner_targets:
-            target_summary = results_by_difficulty.get(target)
-            if not target_summary:
-                checks.append(make_check("density-guardrail", "warn", f"Missing {target} result for density comparison."))
-                continue
-            target_density = total_density(target_summary)
-            if beginner_density <= target_density:
-                checks.append(make_check("density-guardrail", "pass", f"Beginner density {beginner_density} did not exceed {target} density {target_density}."))
-            else:
-                checks.append(make_check("density-guardrail", "fail", f"Beginner density {beginner_density} exceeded {target} density {target_density}."))
+        comparable_targets = [target for target in beginner_targets if target in available_difficulties]
+        if comparable_targets:
+            beginner_density = total_density(beginner)
+            for target in comparable_targets:
+                target_summary = results_by_difficulty[target]
+                target_density = total_density(target_summary)
+                if beginner_density <= target_density:
+                    checks.append(make_check("density-guardrail", "pass", f"Beginner density {beginner_density} did not exceed {target} density {target_density}."))
+                else:
+                    checks.append(make_check("density-guardrail", "fail", f"Beginner density {beginner_density} exceeded {target} density {target_density}."))
 
-    if "beginner" in results_by_difficulty and "intermediate" in results_by_difficulty:
+    if {"beginner", "intermediate"}.issubset(available_difficulties):
         beginner_counts = results_by_difficulty["beginner"].get("visibleCounts", {})
         intermediate_counts = results_by_difficulty["intermediate"].get("visibleCounts", {})
         if beginner_counts != intermediate_counts:

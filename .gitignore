@@ -5,3 +5,5 @@ uploads
 **/.DS_Store
 engine/__pycache__
 *.pyc
+benchmarks/results/
+!benchmarks/results/.gitkeep
