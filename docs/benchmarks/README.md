@@ -22,6 +22,10 @@ Reduce repeat debugging of the same class of bugs by testing every major patch a
 - 1 drum-heavy mix
 - 1 harder mixed track
 
+## Current concrete pack
+- `billie-jean` — simple pop backbone baseline
+- `in-the-end` — subdivision / 16th-hat pressure check
+
 ## Current immediate benchmark
 - Billie Jean should become a reference for obvious pop backbone behavior.
 - Concrete record: `docs/benchmarks/billie-jean.md`

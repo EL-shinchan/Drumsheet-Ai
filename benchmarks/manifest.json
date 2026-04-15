@@ -38,6 +38,41 @@
           "beginnerNotDenserThan": ["intermediate", "pro"]
         }
       }
+    },
+    {
+      "id": "in-the-end",
+      "enabled": true,
+      "songName": "In the End",
+      "artist": "Linkin Park",
+      "audioPath": "benchmarks/audio/in-the-end.mp3",
+      "difficulties": ["beginner", "intermediate", "pro"],
+      "expectations": {
+        "bpmRange": [100, 110],
+        "allowedHatPulseByDifficulty": {
+          "beginner": ["8th", "16th"],
+          "intermediate": ["16th", "8th"],
+          "pro": ["16th", "8th"]
+        },
+        "requiredStepsByDifficulty": {
+          "beginner": {
+            "bd": [0],
+            "sn": [8, 24, 40, 56]
+          }
+        },
+        "minVisibleCountsByDifficulty": {
+          "beginner": {
+            "hh": 8,
+            "sn": 4,
+            "bd": 2
+          },
+          "intermediate": {
+            "hh": 12
+          }
+        },
+        "densityGuardrails": {
+          "beginnerNotDenserThan": ["intermediate", "pro"]
+        }
+      }
     }
   ]
 }
