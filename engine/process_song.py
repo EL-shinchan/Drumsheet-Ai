@@ -293,11 +293,13 @@ def infer_hi_hat_pulse(quantized_hits, difficulty: str = "intermediate"):
     sixteenth_only_score = 0.0
     sixteenth_only_hits = 0
     strongest_sixteenth_only = 0.0
+    strongest_hat_strength = 0.0
 
     for kind, step, event, _accepted, source in quantized_hits:
         if source != "detected" or kind != "hh" or event is None:
             continue
         strength = event.strength
+        strongest_hat_strength = max(strongest_hat_strength, strength)
         if step in eighth_slots:
             eighth_score += strength * 1.2
         elif min(abs(step - slot) for slot in eighth_slots) == 1:
@@ -323,6 +325,15 @@ def infer_hi_hat_pulse(quantized_hits, difficulty: str = "intermediate"):
         standout_dense_hit = strongest_sixteenth_only > 0.03
         sixteenth_clearly_wins = sixteenth_score > eighth_score * 1.65
         if enough_dense_hits and enough_dense_energy and standout_dense_hit and sixteenth_clearly_wins:
+            return 2
+        return 4
+
+    if difficulty == "pro":
+        strong_bridge_hit = strongest_sixteenth_only >= strongest_hat_strength * 0.5 if strongest_hat_strength > 0 else False
+        enough_hat_presence = len(hat_hits) >= 6
+        if sixteenth_score > eighth_score * 1.28:
+            return 2
+        if sixteenth_only_hits >= 1 and enough_hat_presence and strong_bridge_hit:
             return 2
         return 4
 
@@ -393,7 +404,7 @@ def merge_with_backbone(quantized_hits, difficulty: str):
     if difficulty in {"intermediate", "pro"}:
         extra_limits = {
             "intermediate": {"bd": 2, "hh": 1 if hi_hat_step == 4 else 2},
-            "pro": {"bd": 3, "hh": 2 if hi_hat_step == 4 else 4, "sn": 1},
+            "pro": {"bd": 3, "hh": 2 if hi_hat_step == 4 else 6, "sn": 1},
         }[difficulty]
         added = {"bd": 0, "sn": 0, "hh": 0}
         for hit_kind, step, event, _accepted, source in quantized_hits:
