@@ -51,7 +51,7 @@
         "allowedHatPulseByDifficulty": {
           "beginner": ["8th", "16th"],
           "intermediate": ["16th", "8th"],
-          "pro": ["16th", "8th"]
+          "pro": ["16th"]
         },
         "requiredStepsByDifficulty": {
           "beginner": {

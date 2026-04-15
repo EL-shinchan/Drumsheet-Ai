@@ -29,6 +29,7 @@ This song gives the harness a different failure mode from Billie Jean. It should
 
 ## Known failure modes to watch
 - over-clamping 16th pressure into flat 8ths
+- pro still resolving to 8th-note hats when this benchmark should force 16th honesty
 - hats becoming unreadable spam instead of controlled subdivision
 - backbeat support getting lost while chasing hat density
 - difficulty levels looking too similar
