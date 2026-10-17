@@ -7,3 +7,8 @@ engine/__pycache__
 *.pyc
 benchmarks/results/
 !benchmarks/results/.gitkeep
+
+# ML engine (new pipeline) — keep code, not the heavy/generated stuff
+ml/.venv
+ml/output
+**/__pycache__

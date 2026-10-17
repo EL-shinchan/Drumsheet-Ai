@@ -1,0 +1,5 @@
+# Step 1 of the new engine — drum stem separation.
+# Verified working on macOS (Apple Silicon) with Python 3.14.
+demucs==4.1.0
+torch==2.14.1
+numpy
