@@ -91,20 +91,28 @@ def repair_beats(beats, first_sound: float, last_sound: float):
     kept = [b for b in beats if first_sound - T / 2 <= b <= last_sound + T / 2]
     stats["trimmed"] += len(beats) - len(kept)
     beats = kept
-    # Only when the next gap in is normal: if it's short too, the extra beat is
-    # the one just inside, and step 2 removes that one instead.
-    if len(beats) >= 3 and beats[1] - beats[0] < SHORT_GAP * T <= beats[2] - beats[1]:
-        beats.pop(0)
-        stats["trimmed"] += 1
-    if len(beats) >= 3 and beats[-1] - beats[-2] < SHORT_GAP * T <= beats[-2] - beats[-3]:
-        beats.pop()
-        stats["trimmed"] += 1
+    def is_extra_pair(g1, g2):
+        """Step 2's test: two short gaps that add up to about one beat."""
+        return g1 < SHORT_GAP * T and g2 < SHORT_GAP * T and abs(g1 + g2 - T) <= PAIR_TOLERANCE * T
+
+    # Drop a lone short end gap's end beat, unless the two end gaps look like one
+    # beat split in two: then the extra beat is the one just inside the end, and
+    # step 2 removes that one instead.
+    if len(beats) >= 3:
+        g1, g2 = beats[1] - beats[0], beats[2] - beats[1]
+        if g1 < SHORT_GAP * T and not is_extra_pair(g1, g2):
+            beats.pop(0)
+            stats["trimmed"] += 1
+    if len(beats) >= 3:
+        g1, g2 = beats[-1] - beats[-2], beats[-2] - beats[-3]
+        if g1 < SHORT_GAP * T and not is_extra_pair(g1, g2):
+            beats.pop()
+            stats["trimmed"] += 1
 
     # 2. Remove extra beats, left to right, recomputing after each removal.
     i = 1
     while i < len(beats) - 1:
-        g1, g2 = beats[i] - beats[i - 1], beats[i + 1] - beats[i]
-        if g1 < SHORT_GAP * T and g2 < SHORT_GAP * T and abs(g1 + g2 - T) <= PAIR_TOLERANCE * T:
+        if is_extra_pair(beats[i] - beats[i - 1], beats[i + 1] - beats[i]):
             beats.pop(i)
             stats["removed"] += 1
         else:
@@ -242,7 +250,11 @@ def build_grid(raw_beats, raw_downbeats, first_sound: float, last_sound: float) 
         # The model's own beat 1s, but only those that land on a kept beat, so
         # downbeats and bars line up with beats (a trimmed phantom can't appear).
         starts = db_indices
-        bars = make_bars(beats, starts, bpm, pickup_end=starts[0] if starts else len(beats))
+        if starts:
+            bars = make_bars(beats, starts, bpm, pickup_end=starts[0])
+        else:
+            bars = []
+            warnings.append("the model gave no beat 1 on a kept beat: no bars")
     downbeats = [beats[i] for i in starts]
 
     return {

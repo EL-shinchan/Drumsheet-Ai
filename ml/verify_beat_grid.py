@@ -46,10 +46,16 @@ def check_refs(grid, expectations):
     return True, f"all {len(refs)} refs land on a beat 1"
 
 
+def check_confident(grid):
+    if grid["confident"]:
+        return True, "one beat-1 position chosen from confident runs"
+    return False, "; ".join(grid["warnings"]) or "grid not confident"
+
+
 def check_gaps(grid):
     span = grid["stats"]["checkedSpan"]
     if span is None:
-        return False, "no checked span (grid not confident)"
+        return False, "no confident run, so nothing to check"
     beats = np.asarray(grid["beats"])
     gaps = np.diff(beats)
     bad = []
@@ -74,7 +80,7 @@ def check_snare(grid, song_stem):
         return False, f"missing drums stem {stem} (run ml/separate_drums.py first)"
     span = grid["stats"]["checkedSpan"]
     if span is None:
-        return False, "no checked span (grid not confident)"
+        return False, "no confident run, so nothing to check"
     audio, sr = beat_grid.load_mono(stem)
     window = int(0.06 * sr)
     freqs = np.fft.rfftfreq(window, 1 / sr)
@@ -109,6 +115,7 @@ def verify(benchmark) -> bool:
 
     print(f"\n{benchmark['songName']}  ({grid_path.parent})")
     checks = [
+        ("confident grid", check_confident(grid)),
         ("tempo", check_bpm(grid, expectations)),
         ("beat 1 vs Eddie's refs", check_refs(grid, expectations)),
         ("even beats", check_gaps(grid)),

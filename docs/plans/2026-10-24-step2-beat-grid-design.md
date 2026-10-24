@@ -1,7 +1,9 @@
 # Step 2 — Beat Grid Design
 
 Date: 2026-10-24
-Status: Draft, second revision after review. Awaiting Eddie's approval.
+Status: Approved by Eddie and built (`ml/beat_grid.py`). One rule changed during
+the build (the end trim in Repair 1) and needs Eddie's OK. Beat 1 is waiting on
+his ear check.
 
 ## Goal
 Produce a correct beat grid for a song: the time of every beat, and which of those
@@ -62,12 +64,17 @@ the song's peak so that real beats in a quiet intro or fade aren't dropped. It
 uses the full mix because a song can open on vocals or guitar, and those beats are
 real.
 - Drop beats more than `T/2` before the first sound or after the last sound.
-- Then, if the first or last gap is shorter than `0.75T` and the gap next to it
-  is normal (at least `0.75T`), drop that end beat. It's an extra beat with only
-  one neighbour, so step 2 can't catch it. If the next gap is short too, the
-  extra beat is the one just inside the end. Step 2 removes it, and the real
-  end beat stays. (Found while building: dropping the end beat in that case
-  removed the real first beat.)
+- Then, if the first or last gap is shorter than `0.75T`, drop that end beat. It's
+  an extra beat with only one neighbour, so step 2 can't catch it. **Exception:**
+  if the two end gaps pass step 2's test (both short, adding up to `T ± 25%`),
+  the extra beat is the one just inside the end. Leave it for step 2, which
+  removes it, and the real end beat stays.
+  - Found while building: without the exception, an extra beat just inside the
+    start removed the real first beat.
+  - Known limit: when the real last gap is already short (a free-tempo ending
+    like In the End's outro) and an extra beat follows it closely, the gaps alone
+    can't tell which beat is real, and the real one may be removed. This only
+    ever moves the last beat, outside the checked span.
 
 At peak − 50 dB, Billie Jean's first sound is at 1.22 s, so the 0.72 s phantom is
 dropped. In the End's first sound is at 0.03 s, so its 0.32 s beat stays.
@@ -120,19 +127,22 @@ Jean's median gives 115.4 against a fitted 116.8; In the End gives 103.4 against
 - `beats`: beat times after repair
 - `downbeats`: beat-1 times
 - `bars`: one entry per bar, in order, with `start`, `end`, `beats` (the number
-  of beats in the bar) and `source`. `source` is `model` when the model's
-  downbeat agreed with the chosen position and `repaired` when the position rule
-  overrode it. A short pickup before the first beat 1 is included as the first
+  of beats in the bar) and `source` (see below). A short pickup before the first
+  beat 1 is included as the first
   entry, with `pickup: true`. Each bar's `end` is the next bar's `start`, and the
   last bar ends at its last beat plus one beat (`60 / bpm`).
 - `confident`: false on a tie or with no confident run. In that case `beats` are
   still repaired, but `downbeats` and `bars` come straight from the model,
   unrepaired, with every `source` set to `model`. Only model beat 1s that land
   on a kept beat are used, so `downbeats` and `bars` still line up with `beats`;
-  beats before the first one form a `pickup` bar. Step 3 must not trust them.
+  beats before the first one form a `pickup` bar. If there is no such beat 1 at
+  all, `bars` is empty. Step 3 must not trust any of this.
 - A bar's `source` is `model` only if the model put beat 1 where the bar starts
   and nowhere else inside it. Otherwise it's `repaired`, so the output shows
   every bar the repair changed.
+- Bars outside the checked span are numbered by extending the 4/4 count, not by
+  evidence, and no check covers them. On In the End these are the last two bars,
+  in the free piano outro.
 - `warnings`: e.g. confident runs that disagreed
 - `stats`: the raw model's non-4-beat bars, beats trimmed, removed and inserted,
   and the span from the start of the first confident run to the end of the last

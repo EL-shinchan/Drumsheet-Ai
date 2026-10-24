@@ -131,6 +131,39 @@ class BeatGridTests(unittest.TestCase):
         self.assertEqual(grid["stats"]["removed"], 1)
         self.assertDownbeatsMatch(grid, 0.0)
 
+    def test_lone_extra_beat_at_end_is_trimmed(self):
+        T = float(np.median(np.diff(self.beats)))
+        last = self.baseline["beats"][-1]
+        for offset in (0.3, 0.6):
+            grid = grid_from(sorted(self.beats + [last + offset * T]), self.downbeats)
+            self.assertEqual(grid["beats"][-1], last, f"extra beat at +{offset}T")
+
+    def test_extra_beat_just_inside_end_keeps_real_last_beat(self):
+        T = float(np.median(np.diff(self.beats)))
+        last = self.baseline["beats"][-1]
+        grid = grid_from(sorted(self.beats + [last - 0.3 * T]), self.downbeats)
+        self.assertEqual(grid["beats"][-1], last)
+        self.assertEqual(grid["stats"]["removed"], 1)
+        self.assertEqual(len(grid["beats"]), len(self.baseline["beats"]))
+
+    def test_extra_beat_after_a_short_real_gap_is_trimmed(self):
+        # Like In the End's free outro: the real last gap is short (0.72T), then
+        # an extra beat 0.6T later. The two gaps don't add up to one beat, so the
+        # extra beat is the lone one at the end and must go.
+        T = float(np.median(np.diff(self.beats)))
+        body = self.baseline["beats"][:-1]
+        real_last = body[-1] + 0.72 * T
+        beats = body + [real_last, real_last + 0.6 * T]
+        grid = beat_grid.build_grid(beats, self.downbeats, FIXTURE["firstSound"], 1e9)
+        self.assertAlmostEqual(grid["beats"][-1], real_last, places=3)
+
+    def test_no_beat_1_gives_no_bars(self):
+        grid = grid_from(self.beats, [])
+        self.assertFalse(grid["confident"])
+        self.assertEqual(grid["bars"], [])
+        self.assertEqual(grid["downbeats"], [])
+        self.assertTrue(any("no beat 1" in w for w in grid["warnings"]))
+
     def test_two_missed_beats_in_a_row(self):
         i = nearest_index(self.beats, 120.0)
         grid = grid_from(self.beats[:i] + self.beats[i + 2:], self.downbeats)
