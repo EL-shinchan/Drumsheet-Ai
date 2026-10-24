@@ -115,9 +115,12 @@ Jean's median gives 115.4 against a fitted 116.8; In the End gives 103.4 against
 - `firstSound`, `lastSound`: seconds
 - `beats`: beat times after repair
 - `downbeats`: beat-1 times
-- `bars`: one entry per bar with `start`, `beats` and `source`. `source` is
-  `model` when the model's downbeat agreed with the chosen position and
-  `repaired` when the position rule overrode it.
+- `bars`: one entry per bar, in order, with `start`, `end`, `beats` (the number
+  of beats in the bar) and `source`. `source` is `model` when the model's
+  downbeat agreed with the chosen position and `repaired` when the position rule
+  overrode it. A short pickup before the first beat 1 is included as the first
+  entry, with `pickup: true`. Each bar's `end` is the next bar's `start`, and the
+  last bar ends at its last beat plus one beat (`60 / bpm`).
 - `confident`: false on a tie or with no confident run. In that case `beats` are
   still repaired, but `downbeats` and `bars` come straight from the model,
   unrepaired, with every `source` set to `model`. Step 3 must not trust them.
@@ -149,7 +152,7 @@ automatically.
 | --- | --- |
 | Fitted BPM inside the manifest range (Billie Jean 115–121, In the End 100–110) | half or double tempo |
 | Each `downbeatRefs` time has a **`downbeats`** entry within 70 ms (not just any beat) | beat 1 in the wrong place, including off by one or two beats |
-| Within the checked span, every beat gap is within ±15% of the median of the 4 gaps on each side, not counting this gap (fewer near the start or end of the song) (local tempo, not a song-wide `T`, so a real slowdown like In the End's outro passes) | missed or extra beats left in |
+| Within the checked span, every beat gap is within ±15% of the local tempo: the median of the 4 gaps on each side, not counting this gap (fewer near the song's start or end). It's local, not a song-wide `T`, so a real slowdown like In the End's outro passes. | missed or extra beats left in |
 | Drums stem, 200–1000 Hz, 60 ms after each beat, summed over the checked span: beats 2+4 > beats 1+3 | beat 1 off by one beat |
 | Reported, not checked: gaps outside the checked span, raw non-4 bars, beats trimmed, removed and inserted | how much repairing happened |
 
@@ -191,6 +194,14 @@ Pinned at the versions installed and tested: `beat-this==1.1.0`,
 ## Later use of this output: play-along cursor (Eddie's idea)
 In Step 4, the drum sheet plays alongside the song with a box highlighting the bar
 that's sounding, so you can see whether the written notes match the drums you
-hear. Each `bars[].start` from this step is the moment the box moves to that bar,
-so the cursor needs nothing beyond this output. It gets built in Step 4 and shown
-as a standalone mockup before it's wired into the app.
+hear. Each `bars[].start` from this step is the moment the box moves to that bar.
+This works only under two conditions:
+- `confident` is true. Otherwise the bars are the model's raw ones, and the box
+  would jump in the wrong places (on Billie Jean: every two beats until 18 s,
+  then two beats off until 29 s). With `confident: false`, show no cursor and say
+  the grid isn't trusted.
+- The sheet has exactly one measure per entry in `bars`, pickup included, so
+  bar *i* in `bars` is measure *i* on the page.
+
+It gets built in Step 4 and shown as a standalone mockup before it's wired into
+the app.
