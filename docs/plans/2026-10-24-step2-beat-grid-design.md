@@ -71,10 +71,12 @@ real.
   removes it, and the real end beat stays.
   - Found while building: without the exception, an extra beat just inside the
     start removed the real first beat.
-  - Known limit: when the real last gap is already short (a free-tempo ending
-    like In the End's outro) and an extra beat follows it closely, the gaps alone
-    can't tell which beat is real, and the real one may be removed. This only
-    ever moves the last beat, outside the checked span.
+  - Known limit: any real gap under `0.75T` at either end is read as an extra
+    beat. So a song that starts or ends by speeding up can lose its real first
+    or last beat, and where an extra beat sits next to a short real gap, the
+    gaps alone can't tell which beat is real. Either way only the first or last
+    beat moves. On the two benchmarks this never happens (In the End's first gap
+    is 0.97T and its last is 1.45T).
 
 At peak − 50 dB, Billie Jean's first sound is at 1.22 s, so the 0.72 s phantom is
 dropped. In the End's first sound is at 0.03 s, so its 0.32 s beat stays.
@@ -141,8 +143,10 @@ Jean's median gives 115.4 against a fitted 116.8; In the End gives 103.4 against
   and nowhere else inside it. Otherwise it's `repaired`, so the output shows
   every bar the repair changed.
 - Bars outside the checked span are numbered by extending the 4/4 count, not by
-  evidence, and no check covers them. On In the End these are the last two bars,
-  in the free piano outro.
+  evidence, and no automatic check covers them. On Billie Jean that's 1.24–30 s
+  (including 18–29 s, where the model had beat 1 on beat 3) and the last bar; on
+  In the End, the last two bars in the free piano outro. Only Eddie's ear check
+  covers them.
 - `warnings`: e.g. confident runs that disagreed
 - `stats`: the raw model's non-4-beat bars, beats trimmed, removed and inserted,
   and the span from the start of the first confident run to the end of the last
@@ -169,6 +173,7 @@ automatically.
 ### Automatic checks, for both songs
 | Check | Catches |
 | --- | --- |
+| `confident` is true | a tie or no confident run; fails a bad grid even while `downbeatRefs` are missing |
 | Fitted BPM inside the manifest range (Billie Jean 115–121, In the End 100–110) | half or double tempo |
 | Each `downbeatRefs` time has a **`downbeats`** entry within 70 ms (not just any beat) | beat 1 in the wrong place, including off by one or two beats |
 | Within the checked span, every beat gap is within ±15% of the local tempo: the median of the 4 gaps on each side, not counting this gap (fewer near the song's start or end). It's local, not a song-wide `T`, so a real slowdown like In the End's outro passes. | missed or extra beats left in |
