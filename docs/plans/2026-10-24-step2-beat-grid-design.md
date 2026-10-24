@@ -187,3 +187,10 @@ Pinned at the versions installed and tested: `beat-this==1.1.0`,
   the checked span, reported but not fixed).
 - Snapping drum hits to the grid (Step 3).
 - Connecting to the Next.js API route.
+
+## Later use of this output: play-along cursor (Eddie's idea)
+In Step 4, the drum sheet plays alongside the song with a box highlighting the bar
+that's sounding, so you can see whether the written notes match the drums you
+hear. Each `bars[].start` from this step is the moment the box moves to that bar,
+so the cursor needs nothing beyond this output. It gets built in Step 4 and shown
+as a standalone mockup before it's wired into the app.

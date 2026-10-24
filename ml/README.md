@@ -18,6 +18,8 @@ of guessed:
 3. **Recognize the drums** — a model that learned from thousands of examples says
    "kick here, snare there." *(MT3 / Omnizart / ADT — later)*
 4. **Print it nicely** — lay it out as a clean, readable sheet. *(MuseScore / LilyPond — later)*
+   Plus a play-along view: the sheet plays with the song, and a box follows the
+   bar that's sounding, driven by Step 2's bar start times.
 
 The website and API stay the same. We only swap out the "brain."
 
