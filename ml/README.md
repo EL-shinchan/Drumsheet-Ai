@@ -28,7 +28,7 @@ The website and API stay the same. We only swap out the "brain."
 | Step | Tool | State |
 | --- | --- | --- |
 | 1. Separate drums | Demucs 4.1.0 | ✅ working on CPU (`separate_drums.py`) |
-| 2. Beat tracking | beat_this 1.1.0 | 📝 planned — `docs/plans/2026-10-24-step2-beat-grid-design.md`, awaiting approval |
+| 2. Beat tracking | beat_this 1.1.0 | ✅ built (`beat_grid.py`), waiting on Eddie's ear check. Plan: `docs/plans/2026-10-24-step2-beat-grid-design.md` |
 | 3. Drum transcription | TBD | ⬜ not started |
 | 4. Engraving | TBD | ⬜ not started |
 
@@ -53,8 +53,31 @@ ml/.venv/bin/python ml/separate_drums.py benchmarks/audio/billie-jean.mp3
 # -> writes ml/output/htdemucs/billie-jean/drums.mp3 (+ bass/vocals/other)
 ```
 
-Notes:
-- Runs on CPU (`-d cpu`). Apple-GPU (MPS) currently errors on this model.
-- ~3–4 minutes for a full song on an M-series Mac.
+## Step 2: find the beat grid
+
+```bash
+ml/.venv/bin/python ml/beat_grid.py benchmarks/audio/billie-jean.mp3
+# -> ml/output/billie-jean/beat_grid.json  (beats, beat-1 times, bars, tempo)
+# -> ml/output/billie-jean/click.mp3       (song + click, loud click on beat 1)
+```
+
+Reads the **full song**, not the drums stem, because bass and chords help find
+beat 1. About 5 s per song. Assumes 4/4.
+
+Check it:
+
+```bash
+ml/.venv/bin/python -m unittest discover ml/tests   # repair rules, no audio needed
+ml/.venv/bin/python ml/verify_beat_grid.py          # both benchmark songs
+```
+
+`verify_beat_grid.py` needs each song's drums stem from Step 1 for the snare
+check. The "beat 1 vs Eddie's refs" check shows WAIT until Eddie has confirmed
+beat 1 by ear and the times are saved as `downbeatRefs` in
+`benchmarks/manifest.json`.
+
+## Notes
+- Step 1 runs Demucs on CPU (`-d cpu`). Apple-GPU (MPS) currently errors on that model.
+- Step 1 takes ~3–4 minutes for a full song on an M-series Mac.
 - `ml/.venv` and `ml/output` are git-ignored (too big / generated).
 - Benchmark songs (`benchmarks/audio/*.mp3`) are git-ignored too — copyrighted, keep them local.

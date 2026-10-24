@@ -1,6 +1,19 @@
-# Step 1 of the new engine — drum stem separation.
-# Verified working on macOS (Apple Silicon) with Python 3.14.
+# New engine dependencies. Verified on macOS (Apple Silicon) with Python 3.14.
+
+# Step 1 — drum stem separation.
 demucs==4.1.0
 torch==2.14.1
 # demucs imports numpy but doesn't declare it, so it must be listed here.
 numpy==2.5.4
+
+# Step 2 — beat grid.
+beat-this==1.1.0
+# beat_this's torchaudio loader can't read our mp3s; soundfile is its fallback.
+soundfile==0.14.0
+# Pulled in by beat_this / soundfile; pinned so they don't drift.
+torchaudio==2.11.0
+einops==0.8.2
+rotary-embedding-torch==0.9.1
+soxr==1.1.0
+cffi==2.1.1
+pycparser==3.12
