@@ -12,3 +12,6 @@ benchmarks/results/
 ml/.venv
 ml/output
 **/__pycache__
+
+# Benchmark songs are copyrighted — keep them local, never on GitHub
+benchmarks/audio/*.mp3

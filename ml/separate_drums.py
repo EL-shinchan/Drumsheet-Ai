@@ -15,7 +15,11 @@ import subprocess
 import sys
 from pathlib import Path
 
-DEFAULT_OUT = Path("ml/output")
+# Anchored to this file so running from another folder still writes to ml/output
+# (which .gitignore covers), not a stray ./ml/output somewhere else.
+DEFAULT_OUT = Path(__file__).resolve().parent / "output"
+# Demucs writes stems under <out>/<model>/, so the model name is set once here.
+MODEL = "htdemucs"
 
 
 def separate_drums(audio_path: Path, out_dir: Path = DEFAULT_OUT) -> Path:
@@ -26,6 +30,7 @@ def separate_drums(audio_path: Path, out_dir: Path = DEFAULT_OUT) -> Path:
     # --mp3: emit mp3 stems (smaller than wav, good enough for analysis).
     command = [
         sys.executable, "-m", "demucs",
+        "-n", MODEL,
         "-d", "cpu",
         "--mp3",
         "-o", str(out_dir),
@@ -36,7 +41,7 @@ def separate_drums(audio_path: Path, out_dir: Path = DEFAULT_OUT) -> Path:
         raise RuntimeError("Demucs separation failed")
 
     song = audio_path.stem
-    drums = out_dir / "htdemucs" / song / "drums.mp3"
+    drums = out_dir / MODEL / song / "drums.mp3"
     if not drums.exists():
         raise RuntimeError(f"Expected drums stem not found at {drums}")
     return drums

@@ -2,4 +2,5 @@
 # Verified working on macOS (Apple Silicon) with Python 3.14.
 demucs==4.1.0
 torch==2.14.1
-numpy
+# demucs imports numpy but doesn't declare it, so it must be listed here.
+numpy==2.5.4

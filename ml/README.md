@@ -38,7 +38,11 @@ python3.14 -m venv ml/.venv
 ml/.venv/bin/python -m pip install -r ml/requirements.txt
 ```
 
-Needs `ffmpeg` on the PATH (already installed via Homebrew).
+The first separation downloads the model weights (~80 MB) from HuggingFace into
+`~/.cache/huggingface/`. If that first run hangs, the download is blocked — it
+needs a working connection to huggingface.co. Later runs use the cache.
+
+`ffmpeg` (installed via Homebrew) is only needed for input formats other than mp3.
 
 ## Step 1: separate the drums
 
@@ -51,3 +55,4 @@ Notes:
 - Runs on CPU (`-d cpu`). Apple-GPU (MPS) currently errors on this model.
 - ~3–4 minutes for a full song on an M-series Mac.
 - `ml/.venv` and `ml/output` are git-ignored (too big / generated).
+- Benchmark songs (`benchmarks/audio/*.mp3`) are git-ignored too — copyrighted, keep them local.
