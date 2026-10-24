@@ -149,7 +149,7 @@ automatically.
 | --- | --- |
 | Fitted BPM inside the manifest range (Billie Jean 115–121, In the End 100–110) | half or double tempo |
 | Each `downbeatRefs` time has a **`downbeats`** entry within 70 ms (not just any beat) | beat 1 in the wrong place, including off by one or two beats |
-| Within the checked span, every beat gap is within ±15% of the median of the 8 gaps around it (local tempo, not a song-wide `T`, so a real slowdown like In the End's outro passes) | missed or extra beats left in |
+| Within the checked span, every beat gap is within ±15% of the median of the 4 gaps on each side, not counting this gap (fewer near the start or end of the song) (local tempo, not a song-wide `T`, so a real slowdown like In the End's outro passes) | missed or extra beats left in |
 | Drums stem, 200–1000 Hz, 60 ms after each beat, summed over the checked span: beats 2+4 > beats 1+3 | beat 1 off by one beat |
 | Reported, not checked: gaps outside the checked span, raw non-4 bars, beats trimmed, removed and inserted | how much repairing happened |
 
