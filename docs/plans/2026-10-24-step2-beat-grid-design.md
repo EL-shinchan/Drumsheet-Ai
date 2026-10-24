@@ -72,7 +72,7 @@ real.
   - Found while building: without the exception, an extra beat just inside the
     start removed the real first beat.
   - Known limit: any real gap under `0.75T` at either end is read as an extra
-    beat. So a song that starts or ends by speeding up can lose its real first
+    beat. So a song that starts fast, or ends by speeding up, can lose its real first
     or last beat, and where an extra beat sits next to a short real gap, the
     gaps alone can't tell which beat is real. Either way only the first or last
     beat moves. On the two benchmarks this never happens (In the End's first gap
@@ -143,10 +143,11 @@ Jean's median gives 115.4 against a fitted 116.8; In the End gives 103.4 against
   and nowhere else inside it. Otherwise it's `repaired`, so the output shows
   every bar the repair changed.
 - Bars outside the checked span are numbered by extending the 4/4 count, not by
-  evidence, and no automatic check covers them. On Billie Jean that's 1.24–30 s
-  (including 18–29 s, where the model had beat 1 on beat 3) and the last bar; on
-  In the End, the last two bars in the free piano outro. Only Eddie's ear check
-  covers them.
+  evidence. On Billie Jean that's 1.24–30 s (including 18–29 s, where the model
+  had beat 1 on beat 3) and the last bar; on In the End, the last two bars in the
+  free piano outro. Only the `downbeatRefs` check at Eddie's 18–30 s reference
+  covers any of it. Billie Jean's 1.24–18 s and last bar, and In the End's outro
+  bars, have no check at all.
 - `warnings`: e.g. confident runs that disagreed
 - `stats`: the raw model's non-4-beat bars, beats trimmed, removed and inserted,
   and the span from the start of the first confident run to the end of the last
