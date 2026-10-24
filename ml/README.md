@@ -14,7 +14,7 @@ The new engine has four steps, each a tool that was *trained on examples* instea
 of guessed:
 
 1. **Clean the audio** — split the song so we only hear the drums. *(Demucs)* ← done
-2. **Find the beat** — figure out exactly where each beat lands. *(madmom — next)*
+2. **Find the beat** — figure out exactly where each beat lands, and which one is beat 1. *(beat_this — next)*
 3. **Recognize the drums** — a model that learned from thousands of examples says
    "kick here, snare there." *(MT3 / Omnizart / ADT — later)*
 4. **Print it nicely** — lay it out as a clean, readable sheet. *(MuseScore / LilyPond — later)*
@@ -26,7 +26,7 @@ The website and API stay the same. We only swap out the "brain."
 | Step | Tool | State |
 | --- | --- | --- |
 | 1. Separate drums | Demucs 4.1.0 | ✅ working on CPU (`separate_drums.py`) |
-| 2. Beat tracking | madmom | ⬜ not started |
+| 2. Beat tracking | beat_this 1.1.0 | 📝 planned — `docs/plans/2026-10-24-step2-beat-grid-design.md`, awaiting approval |
 | 3. Drum transcription | TBD | ⬜ not started |
 | 4. Engraving | TBD | ⬜ not started |
 
