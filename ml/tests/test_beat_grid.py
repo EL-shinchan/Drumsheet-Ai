@@ -94,6 +94,60 @@ class BeatGridTests(unittest.TestCase):
         self.assertFalse(grid["confident"])
         self.assertIsNone(grid["stats"]["checkedSpan"])
         self.assertTrue(all(bar["source"] == "model" for bar in grid["bars"]))
+        # Downbeats and bars still line up with the kept beats (no 0.72 s phantom).
+        self.assertTrue(set(grid["downbeats"]) <= set(grid["beats"]))
+        self.assertEqual(len(grid["bars"]), len(grid["downbeats"]) + int(grid["bars"][0]["pickup"]))
+
+    def test_tie_is_not_confident(self):
+        # Synthetic: 100 even beats, two 10-bar runs at different positions.
+        beats = [i * 0.5 for i in range(100)]
+        downbeats = [beats[i] for i in range(0, 41, 4)] + [beats[i] for i in range(41, 82, 4)]
+        grid = beat_grid.build_grid(beats, downbeats, 0.0, 50.0)
+        self.assertFalse(grid["confident"])
+        self.assertTrue(any("tie" in w for w in grid["warnings"]))
+        self.assertIsNotNone(grid["stats"]["checkedSpan"])
+
+    def test_split_and_wrong_bars_are_marked_repaired(self):
+        bars = {bar["start"]: bar["source"] for bar in self.baseline["bars"]}
+        # 1.2-18 s: the model put beat 1 on every other beat, so it split these bars.
+        self.assertEqual(bars[1.24], "repaired")
+        # 18.8-29 s: the model had beat 1 on the wrong beat.
+        self.assertTrue(all(bars[s] == "repaired" for s in bars if 19.5 < s < 29.0))
+        # From the vocal entry on, the model was right.
+        self.assertEqual(bars[min(bars, key=lambda s: abs(s - 100.0))], "model")
+
+    def test_lone_extra_beat_at_start_is_trimmed(self):
+        T = float(np.median(np.diff(self.beats)))
+        first = self.baseline["beats"][0]
+        grid = grid_from(sorted(self.beats + [first - 0.3 * T]), self.downbeats)
+        self.assertEqual(grid["beats"][0], self.baseline["beats"][0])
+        self.assertDownbeatsMatch(grid, 0.0)
+
+    def test_extra_beat_just_inside_start_keeps_real_first_beat(self):
+        T = float(np.median(np.diff(self.beats)))
+        first = self.baseline["beats"][0]
+        grid = grid_from(sorted(self.beats + [first + 0.3 * T]), self.downbeats)
+        self.assertEqual(grid["beats"][0], first)
+        self.assertEqual(grid["stats"]["removed"], 1)
+        self.assertDownbeatsMatch(grid, 0.0)
+
+    def test_two_missed_beats_in_a_row(self):
+        i = nearest_index(self.beats, 120.0)
+        grid = grid_from(self.beats[:i] + self.beats[i + 2:], self.downbeats)
+        self.assertEqual(grid["stats"]["inserted"], 2)
+        self.assertDownbeatsMatch(grid, 0.02)
+
+    def test_off_centre_extra_beat(self):
+        i = nearest_index(self.beats, 160.0)
+        extra = self.beats[i] + 0.3 * (self.beats[i + 1] - self.beats[i])
+        grid = grid_from(self.beats[: i + 1] + [extra] + self.beats[i + 1:], self.downbeats)
+        self.assertEqual(grid["stats"]["removed"], 1)
+        self.assertDownbeatsMatch(grid, 0.0)
+
+    def test_too_few_beats(self):
+        grid = beat_grid.build_grid([1.0], [1.0], 0.0, 2.0)
+        self.assertFalse(grid["confident"])
+        self.assertEqual(grid["bars"], [])
 
     def test_pickup_bar(self):
         # Drop the first beat 1 so the song opens with a 3-beat pickup.

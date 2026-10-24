@@ -62,8 +62,12 @@ the song's peak so that real beats in a quiet intro or fade aren't dropped. It
 uses the full mix because a song can open on vocals or guitar, and those beats are
 real.
 - Drop beats more than `T/2` before the first sound or after the last sound.
-- Then, if the first or last gap is shorter than `0.75T`, drop that end beat. It's
-  an extra beat with only one neighbour, so step 2 can't catch it.
+- Then, if the first or last gap is shorter than `0.75T` and the gap next to it
+  is normal (at least `0.75T`), drop that end beat. It's an extra beat with only
+  one neighbour, so step 2 can't catch it. If the next gap is short too, the
+  extra beat is the one just inside the end. Step 2 removes it, and the real
+  end beat stays. (Found while building: dropping the end beat in that case
+  removed the real first beat.)
 
 At peak − 50 dB, Billie Jean's first sound is at 1.22 s, so the 0.72 s phantom is
 dropped. In the End's first sound is at 0.03 s, so its 0.32 s beat stays.
@@ -123,7 +127,12 @@ Jean's median gives 115.4 against a fitted 116.8; In the End gives 103.4 against
   last bar ends at its last beat plus one beat (`60 / bpm`).
 - `confident`: false on a tie or with no confident run. In that case `beats` are
   still repaired, but `downbeats` and `bars` come straight from the model,
-  unrepaired, with every `source` set to `model`. Step 3 must not trust them.
+  unrepaired, with every `source` set to `model`. Only model beat 1s that land
+  on a kept beat are used, so `downbeats` and `bars` still line up with `beats`;
+  beats before the first one form a `pickup` bar. Step 3 must not trust them.
+- A bar's `source` is `model` only if the model put beat 1 where the bar starts
+  and nowhere else inside it. Otherwise it's `repaired`, so the output shows
+  every bar the repair changed.
 - `warnings`: e.g. confident runs that disagreed
 - `stats`: the raw model's non-4-beat bars, beats trimmed, removed and inserted,
   and the span from the start of the first confident run to the end of the last

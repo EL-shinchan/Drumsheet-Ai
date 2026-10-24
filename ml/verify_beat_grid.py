@@ -38,6 +38,8 @@ def check_refs(grid, expectations):
     if not refs:
         return None, "no downbeatRefs yet: waiting for Eddie's ear check"
     downbeats = np.asarray(grid["downbeats"])
+    if downbeats.size == 0:
+        return False, "grid has no beat 1 at all"
     misses = [r for r in refs if np.abs(downbeats - r).min() > REF_TOLERANCE]
     if misses:
         return False, f"no beat 1 within 70 ms of {misses}"
@@ -118,8 +120,11 @@ def verify(benchmark) -> bool:
         print(f"  {mark}  {name}: {detail}")
         passed = passed and ok is not False
     stats = grid["stats"]
+    first_one = f"{grid['downbeats'][0]:.2f}s" if grid["downbeats"] else "none"
+    repaired = sum(1 for bar in grid["bars"] if bar["source"] == "repaired")
     print(
-        f"  info  confident={grid['confident']}, first beat 1 at {grid['downbeats'][0]:.2f}s, "
+        f"  info  confident={grid['confident']}, first beat 1 at {first_one}, "
+        f"bars repaired {repaired}/{len(grid['bars'])}, "
         f"raw non-4 bars {stats['rawNon4Bars']}, trimmed {stats['trimmed']}, "
         f"removed {stats['removed']}, inserted {stats['inserted']}, checked span {stats['checkedSpan']}"
     )
@@ -137,6 +142,10 @@ def main() -> None:
         if b.get("enabled") and (args.benchmark is None or b["id"] == args.benchmark)
     ]
     results = [verify(b) for b in benchmarks]
+    waiting = [b["songName"] for b in benchmarks if not b["expectations"].get("downbeatRefs")]
+    if waiting:
+        # WAIT doesn't fail the run, but beat 1 isn't confirmed until these exist.
+        print(f"\nBeat 1 not yet confirmed by ear for: {', '.join(waiting)}")
     sys.exit(0 if all(results) else 1)
 
 

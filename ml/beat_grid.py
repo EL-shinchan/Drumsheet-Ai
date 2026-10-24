@@ -91,10 +91,12 @@ def repair_beats(beats, first_sound: float, last_sound: float):
     kept = [b for b in beats if first_sound - T / 2 <= b <= last_sound + T / 2]
     stats["trimmed"] += len(beats) - len(kept)
     beats = kept
-    if len(beats) >= 3 and beats[1] - beats[0] < SHORT_GAP * T:
+    # Only when the next gap in is normal: if it's short too, the extra beat is
+    # the one just inside, and step 2 removes that one instead.
+    if len(beats) >= 3 and beats[1] - beats[0] < SHORT_GAP * T <= beats[2] - beats[1]:
         beats.pop(0)
         stats["trimmed"] += 1
-    if len(beats) >= 3 and beats[-1] - beats[-2] < SHORT_GAP * T:
+    if len(beats) >= 3 and beats[-1] - beats[-2] < SHORT_GAP * T <= beats[-2] - beats[-3]:
         beats.pop()
         stats["trimmed"] += 1
 
@@ -161,15 +163,28 @@ def fitted_bpm(beats) -> float:
 
 
 def make_bars(beats, starts, bpm, model_starts=None, pickup_end=None):
-    """Bar entries from beat indices where bars start."""
+    """Bar entries from beat indices where bars start.
+
+    A bar's source is "model" only if the model put beat 1 exactly where the bar
+    starts and nowhere else inside it; otherwise the repair changed it.
+    """
+    def source(first, end, starts_on_model):
+        if model_starts is None:
+            return "model"
+        split = any(first < m < end for m in model_starts)
+        return "model" if starts_on_model and not split else "repaired"
+
     bars = []
     one_beat = 60.0 / bpm
     if pickup_end:
-        bars.append({"start": beats[0], "beats": pickup_end, "source": "model", "pickup": True})
+        bars.append({
+            "start": beats[0], "beats": pickup_end,
+            "source": source(-1, pickup_end, True), "pickup": True,
+        })
     for k, i in enumerate(starts):
         nxt = starts[k + 1] if k + 1 < len(starts) else len(beats)
-        source = "model" if model_starts is None or i in model_starts else "repaired"
-        bars.append({"start": beats[i], "beats": nxt - i, "source": source, "pickup": False})
+        on_model = model_starts is None or i in model_starts
+        bars.append({"start": beats[i], "beats": nxt - i, "source": source(i, nxt, on_model), "pickup": False})
     for k, bar in enumerate(bars):
         if k + 1 < len(bars):
             bar["end"] = bars[k + 1]["start"]
@@ -183,6 +198,13 @@ def build_grid(raw_beats, raw_downbeats, first_sound: float, last_sound: float) 
     raw_beats, raw_downbeats = list(raw_beats), list(raw_downbeats)
     beats, stats = repair_beats(raw_beats, first_sound, last_sound)
     stats["rawNon4Bars"] = raw_non4_bars(raw_beats, raw_downbeats)
+    if len(beats) < 2:
+        stats["checkedSpan"] = None
+        return {
+            "bpm": 0.0, "firstSound": round(first_sound, 3), "lastSound": round(last_sound, 3),
+            "confident": False, "beats": [round(b, 4) for b in beats], "downbeats": [],
+            "bars": [], "warnings": ["fewer than 2 beats after repair: no grid"], "stats": stats,
+        }
     bpm = fitted_bpm(beats)
     db_indices = snap_downbeats(beats, raw_downbeats)
     runs = confident_runs(db_indices)
@@ -201,24 +223,27 @@ def build_grid(raw_beats, raw_downbeats, first_sound: float, last_sound: float) 
         )
         warnings.append(f"confident runs disagree on beat 1: {detail}")
 
+    if runs:
+        last_first, last_bars = runs[-1]
+        span_end_index = min(last_first + last_bars * BEATS_PER_BAR, len(beats) - 1)
+        stats["checkedSpan"] = [round(beats[runs[0][0]], 4), round(beats[span_end_index], 4)]
+    else:
+        stats["checkedSpan"] = None
+
     if confident:
         phase = ranked[0][0]
         starts = list(range(phase, len(beats), BEATS_PER_BAR))
-        downbeats = [beats[i] for i in starts]
         bars = make_bars(beats, starts, bpm, model_starts=set(db_indices), pickup_end=phase)
-        span_start = beats[runs[0][0]]
-        last_first, last_bars = runs[-1]
-        span_end_index = min(last_first + last_bars * BEATS_PER_BAR, len(beats) - 1)
-        stats["checkedSpan"] = [round(span_start, 4), round(beats[span_end_index], 4)]
     else:
         if not ranked:
             warnings.append("no confident run: beat 1 positions are the model's, unrepaired")
         else:
             warnings.append("confident runs tie: beat 1 positions are the model's, unrepaired")
-        downbeats = list(raw_downbeats)
-        snapped = snap_downbeats(beats, raw_downbeats)
-        bars = make_bars(beats, snapped, bpm) if snapped else []
-        stats["checkedSpan"] = None
+        # The model's own beat 1s, but only those that land on a kept beat, so
+        # downbeats and bars line up with beats (a trimmed phantom can't appear).
+        starts = db_indices
+        bars = make_bars(beats, starts, bpm, pickup_end=starts[0] if starts else len(beats))
+    downbeats = [beats[i] for i in starts]
 
     return {
         "bpm": round(bpm, 2),
